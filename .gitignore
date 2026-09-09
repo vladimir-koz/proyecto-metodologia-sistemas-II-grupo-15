@@ -1,0 +1,27 @@
+# Dependencias y archivos generados
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Variables locales y secretos
+.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# Configuración local
+docker-compose.override.yml
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
