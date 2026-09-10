@@ -1,256 +1,200 @@
 # API de entrenamientos
 
-Backend REST para administrar ejercicios, rutinas, planes semanales y entrenamientos. Se utiliza como proyecto integrador de Metodología de Sistemas II.
+API REST para gestionar ejercicios, rutinas, planes semanales y entrenamientos. Proyecto de Metodología de Sistemas II desarrollado con Node.js, TypeScript, Express, Sequelize y PostgreSQL.
 
-## Estado actual
+## Cómo levantar el proyecto
 
-- API funcional con autenticación JWT y PostgreSQL.
-- Migraciones y datos de demostración mediante Sequelize.
-- 15 pruebas smoke de HTTP, autenticación y validaciones.
-- Entorno reproducible con Docker Compose.
-- Sin frontend, CI ni pruebas de integración con PostgreSQL por el momento.
+Elegir **una sola** de las siguientes opciones. Cada opción comienza desde un clon nuevo y no depende de haber ejecutado las anteriores.
 
-## Tecnologías
+### Opción 1 — Todo con Docker (recomendada)
 
-- Node.js 24 LTS, TypeScript y Express 4.
-- PostgreSQL 17 y Sequelize 6.
-- Jest y Supertest.
-- Docker, Docker Compose y pgAdmin 4.
+Requisitos:
 
-El repositorio incluye `package.json` y `package-lock.json`. Las instalaciones reproducibles deben realizarse con `npm ci`.
-
-## Requisitos
-
-Para el camino recomendado solamente se necesita:
-
-- Git;
-- Docker Engine o Docker Desktop;
+- Git.
+- Docker Desktop o Docker Engine en ejecución.
 - Docker Compose v2.
 
-## Inicio rápido con Docker
+No requiere instalar Node.js ni PostgreSQL.
 
-### 1. Clonar
-
-Reemplazar los marcadores antes de entregar:
+Desde una terminal:
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <NOMBRE_DEL_REPOSITORIO>
-```
-
-### 2. Iniciar y preparar
-
-Desde la raíz del repositorio:
-
-```bash
+git clone https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
+cd proyecto-metodologia-sistemas-II-grupo-15
 docker compose up -d --build
 docker compose exec backend npm run db:setup
 curl http://localhost:3001/api/health
 ```
 
-Respuesta esperada del healthcheck:
+En Windows PowerShell, utilizar `curl.exe` en el último comando.
 
-```json
-{
-  "status": "OK",
-  "message": "API funcionando correctamente",
-  "timestamp": "...",
-  "environment": "development"
-}
-```
-
-`db:setup` ejecuta primero las migraciones y después los seeders. No se cargan datos demo automáticamente en la imagen de producción.
-
-## Servicios locales
-
-| Servicio | Dirección |
-| --- | --- |
-| API | http://localhost:3001/api |
-| Health | http://localhost:3001/api/health |
-| PostgreSQL | `localhost:5432` |
-| pgAdmin | http://localhost:5050 |
-
-La aplicación no consume APIs externas durante su ejecución. La primera construcción requiere internet para descargar paquetes de npm e imágenes de Docker.
-
-### pgAdmin
-
-Acceso local:
-
-```text
-Email: admin@admin.com
-Password: admin
-```
-
-Conexión a PostgreSQL desde pgAdmin:
-
-```text
-Host: database
-Port: 5432
-Database: app_database
-User: app_user
-Password: app_password
-```
-
-Son credenciales públicas destinadas exclusivamente al entorno local.
-
-## Cuenta demo
-
-Disponible después de ejecutar `db:setup`:
-
-```text
-Email: demo@powerup.com
-Password: Demo1234!
-```
-
-Ejemplo de login:
+Para detener todo sin borrar la base:
 
 ```bash
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"demo@powerup.com","password":"Demo1234!"}'
+docker compose down
 ```
 
-Las demás rutas requieren el encabezado `Authorization: Bearer <TOKEN>`.
+### Opción 2 — Backend local y PostgreSQL con Docker
 
-## Configuración
+Requisitos:
 
-Docker Compose ya proporciona la configuración local. Para ejecutar Node.js fuera de Docker se debe copiar el ejemplo:
+- Git.
+- Docker Desktop o Docker Engine en ejecución.
+- Docker Compose v2.
+- Node.js 24 y npm.
 
-```bash
-cp backend/.env.example backend/.env
-```
-
-Variables principales:
-
-| Variable | Uso |
-| --- | --- |
-| `PORT` | Puerto de la API; por defecto 3001 |
-| `DB_HOST`, `DB_PORT` | Ubicación de PostgreSQL |
-| `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Credenciales de la base |
-| `DATABASE_URL` | Conexión alternativa mediante URL |
-| `DB_SSL` | Activa SSL cuando vale `true` |
-| `JWT_SECRET` | Obligatoria para firmar tokens |
-| `CORS_ORIGIN` | Origen permitido para un cliente web |
-
-Dentro de Compose, PostgreSQL se encuentra en `database:5432`. Cuando Node.js se ejecuta localmente se utiliza `localhost:5432`.
-
-Nunca se deben versionar `.env`, secretos ni credenciales reales. `backend/.env.example` sí se versiona porque documenta el contrato sin incluir secretos reales.
-
-## Alternativa sin contenerizar Node.js
-
-En este modo PostgreSQL y pgAdmin se ejecutan en Docker, pero la API se ejecuta directamente en la computadora. Requiere Node.js 24; `.nvmrc` y `engines.node` declaran esa versión.
-
-Desde la raíz, detener el backend de Docker para liberar el puerto 3001 e iniciar solamente los servicios necesarios:
+Desde una terminal:
 
 ```bash
-docker compose stop backend
+git clone https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
+cd proyecto-metodologia-sistemas-II-grupo-15
 docker compose up -d database pgadmin
-```
-
-Después:
-
-```bash
 cd backend
-nvm use
 cp .env.example .env
+node --version
 npm ci
 npm run db:setup
 npm run dev
 ```
 
-La copia de `.env.example` se realiza solamente la primera vez. Si `npm ci` falla, no continuar con `db:setup` ni `dev`, porque todavía no estarán instaladas sus herramientas.
+En Windows PowerShell, reemplazar la copia del archivo por:
 
-## Comandos principales
-
-Ejecutar desde `backend/` o anteponer `docker compose exec backend`:
-
-| Comando | Función |
-| --- | --- |
-| `npm run dev` | Inicia la API con recarga |
-| `npm run build` | Compila TypeScript |
-| `npm start` | Ejecuta el código compilado |
-| `npm run migrate` | Aplica migraciones |
-| `npm run seed` | Carga datos iniciales |
-| `npm run db:setup` | Ejecuta migraciones y seeders |
-| `npm test` | Compila y ejecuta los tests |
-
-## Datos iniciales
-
-Los seeders crean 10 grupos musculares, 12 ejercicios, 3 rutinas, un programa de cuatro semanas, 12 entrenamientos demo y 144 series.
-
-Repetir `db:setup` no duplica los catálogos. La actividad demo se reemplaza y sus fechas se recalculan respecto de la semana actual.
-
-## Estructura
-
-```text
-.
-├── backend/
-│   ├── config/       # configuración de Sequelize CLI
-│   ├── migrations/   # esquema de base de datos
-│   ├── seeders/      # datos iniciales y demo
-│   ├── src/          # API organizada por capas
-│   ├── tests/        # pruebas smoke
-│   ├── .dockerignore
-│   ├── .env.example
-│   ├── .nvmrc
-│   ├── Dockerfile
-│   ├── Dockerfile.dev
-│   ├── jest.config.js
-│   ├── package.json
-│   ├── package-lock.json
-│   └── tsconfig.json
-├── docker-compose.yml
-├── .gitignore
-└── README.md
+```powershell
+Copy-Item .env.example .env
 ```
 
-La arquitectura sigue el flujo `routes → middlewares/validators → controllers → services → repositories → Sequelize → PostgreSQL`.
-
-## Pruebas
+Dejar `npm run dev` ejecutándose. En otra terminal comprobar:
 
 ```bash
-cd backend
+curl http://localhost:3001/api/health
+```
+
+Para detener la API, presionar `Ctrl+C`. Para detener PostgreSQL y pgAdmin:
+
+```bash
+cd ..
+docker compose down
+```
+
+### Opción 3 — Todo local, sin Docker
+
+Requisitos:
+
+- Git.
+- Node.js 24 y npm.
+- PostgreSQL 17 instalado y en ejecución.
+
+Primero abrir PostgreSQL como administrador. En Linux normalmente se utiliza `sudo -u postgres psql`; en Windows se puede usar SQL Shell (`psql`) o `psql -U postgres`. Ejecutar una sola vez:
+
+```sql
+CREATE USER app_user WITH PASSWORD 'app_password';
+CREATE DATABASE app_database OWNER app_user;
+\q
+```
+
+Después, desde una terminal:
+
+```bash
+git clone https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
+cd proyecto-metodologia-sistemas-II-grupo-15/backend
+cp .env.example .env
+node --version
 npm ci
-npm test
+npm run db:setup
+npm run dev
 ```
 
-La suite contiene 15 pruebas smoke. Comprueba healthchecks, 404, autenticación y validaciones antes de consultar la base. No prueba PostgreSQL ni toda la lógica de negocio; las pruebas de integración quedan pendientes.
+En Windows PowerShell, reemplazar `cp .env.example .env` por `Copy-Item .env.example .env`.
 
-## Operación y problemas frecuentes
+Dejar `npm run dev` ejecutándose. En otra terminal comprobar:
 
 ```bash
-docker compose ps
-docker compose logs -f backend
-docker compose logs -f database
-docker compose stop
+curl http://localhost:3001/api/health
 ```
 
-### Puertos ocupados
+Para detener la API, presionar `Ctrl+C`. PostgreSQL se detiene desde el administrador de servicios del sistema operativo.
 
-Compose necesita publicar los puertos 3001 (API), 5432 (PostgreSQL) y 5050 (pgAdmin). Si aparece `port is already allocated` o `Bind failed`, primero identificar qué los está usando:
+## Verificación y accesos
+
+- API: http://localhost:3001/api
+- Healthcheck: http://localhost:3001/api/health
+- PostgreSQL: `localhost:5432`
+- pgAdmin, solamente en las opciones 1 y 2: http://localhost:5050
+
+El healthcheck debe responder con `"status": "OK"`.
+
+Credenciales locales:
+
+| Uso | Usuario | Contraseña |
+| --- | --- | --- |
+| Cuenta demo de la API | `demo@powerup.com` | `Demo1234!` |
+| pgAdmin | `admin@admin.com` | `admin` |
+| PostgreSQL | `app_user` | `app_password` |
+
+En pgAdmin conectar al host `database`, puerto `5432` y base `app_database`. Estas credenciales son únicamente para desarrollo local.
+
+## Configuración reproducible
+
+- Node.js debe ser versión 24. `node --version` debe comenzar con `v24`.
+- En Linux y macOS, `backend/.nvmrc` permite seleccionar esa versión con `nvm use`; NVM es opcional. En Windows se puede instalar Node.js 24 directamente o utilizar un administrador de versiones compatible.
+- `package-lock.json` se versiona y las dependencias se instalan con `npm ci`.
+- Para ejecutar la API local se copia `.env.example` como `.env`.
+- Docker Compose ya aporta sus variables y no necesita ese `.env`.
+- `.env`, `node_modules`, `dist`, cobertura, logs y secretos no se versionan.
+
+Dentro de Docker, la API usa `database:5432`; ejecutada localmente usa `localhost:5432`. `JWT_SECRET` es obligatorio.
+
+## Comandos del backend
+
+Esta sección es una referencia para desarrollar y mantener el backend; **no es una cuarta forma de levantar el proyecto**. Para el primer arranque se debe seguir completa una de las opciones 1, 2 o 3.
+
+La forma de ejecutar estos comandos depende de la opción elegida:
+
+- En la opción 1, desde la raíz: `docker compose exec backend <COMANDO>`; por ejemplo, `docker compose exec backend npm test`.
+- En las opciones 2 y 3, entrar en `backend/` y ejecutar el comando directamente.
+- `npm ci` se ejecuta en la computadora solamente en las opciones 2 y 3. En la opción 1 las dependencias se instalan al construir la imagen Docker.
+
+| Comando | Cuándo utilizarlo |
+| --- | --- |
+| `npm ci` | Después de clonar o cuando cambia `package-lock.json`. Reinstala exactamente las dependencias registradas en el lockfile. |
+| `npm run dev` | Para desarrollar en las opciones 2 o 3. Inicia la API con recarga automática y mantiene ocupada la terminal. |
+| `npm run build` | Para comprobar que TypeScript compila. Genera el directorio `dist/`. |
+| `npm start` | Para ejecutar el contenido ya compilado de `dist/`, sin recarga automática. Antes requiere `npm run build`. |
+| `npm run migrate` | Cuando solamente se necesita crear o actualizar las tablas de PostgreSQL. No carga datos demo. |
+| `npm run seed` | Cuando las tablas ya existen y solamente se necesitan los datos demo. |
+| `npm run db:setup` | En el primer arranque. Ejecuta migraciones y luego seeders; es el comando habitual para preparar la base. |
+| `npm test` | Para verificar cambios. Primero compila el proyecto y después ejecuta las 15 pruebas smoke. |
+
+Los comandos `npm` y `docker compose` son iguales en Linux, macOS y PowerShell. Las diferencias necesarias ya están indicadas en las opciones de arranque: `cp` en Linux/macOS, `Copy-Item` en PowerShell y el acceso a PostgreSQL como administrador en la opción 3.
+
+Hay 15 pruebas smoke de HTTP, autenticación y validaciones; no prueban PostgreSQL ni toda la lógica de negocio.
+
+## Organización
+
+`backend/src` contiene la API; `backend/migrations` el esquema; `backend/seeders` los datos demo; y `backend/tests` las pruebas. El flujo principal es `routes → validators/middlewares → controllers → services → repositories → Sequelize → PostgreSQL`.
+
+## Problemas frecuentes
+
+### Puerto ocupado
+
+Los puertos utilizados son 3001, 5432 y 5050. Ver contenedores que ya los estén usando:
 
 ```bash
 docker ps --format "table {{.Names}}\t{{.Ports}}"
 ```
 
-Si pertenecen a contenedores de otro proyecto, se pueden detener sin borrar sus datos:
-
-```bash
-docker stop <NOMBRE_DEL_CONTENEDOR>
-```
-
-En Windows PowerShell también se pueden consultar procesos locales:
+En Windows PowerShell:
 
 ```powershell
 Get-NetTCPConnection -State Listen |
   Where-Object { $_.LocalPort -in 3001, 5432, 5050 }
 ```
 
-No se debe finalizar un proceso desconocido ni usar `docker compose down -v` para resolver una colisión de puertos.
+Detener solamente el proceso o contenedor conocido que provoca el conflicto.
 
 ### Backend `unhealthy` o error `EAI_AGAIN database`
 
-Un primer arranque fallido puede dejar contenedores sin conectar correctamente a la red interna. Recrearlos sin borrar los volúmenes:
+Desde la raíz, recrear los contenedores sin borrar la base:
 
 ```bash
 docker compose down
@@ -258,30 +202,9 @@ docker compose up -d --build --force-recreate
 docker compose ps
 ```
 
-Esperar hasta que `database` y `backend` estén `healthy`. Recién entonces ejecutar:
+### Error `EACCES` en `backend/node_modules`
 
-```bash
-docker compose exec backend npm run db:setup
-curl http://localhost:3001/api/health
-```
-
-Si el backend continúa sin responder:
-
-```bash
-docker compose restart backend
-docker compose logs --tail=100 backend
-```
-
-### Consideraciones para Windows
-
-- Iniciar Docker Desktop y esperar a que el motor esté listo.
-- Ejecutar los comandos desde la raíz, donde se encuentra `docker-compose.yml`.
-- Utilizar `docker compose` y no el comando antiguo `docker-compose`.
-- En PowerShell usar `curl.exe http://localhost:3001/api/health` para evitar el alias `curl` de algunas versiones.
-
-### `npm ci` devuelve `EACCES` después de usar Docker
-
-Docker puede dejar un directorio vacío `backend/node_modules` con otro propietario. Desde la raíz del repositorio, detener el backend de Docker, eliminar únicamente ese directorio vacío y reinstalar localmente:
+Este problema puede aparecer al pasar del backend en Docker al backend local. Desde la raíz:
 
 ```bash
 docker compose stop backend
@@ -290,11 +213,11 @@ cd backend
 npm ci
 ```
 
-No ejecutar `sudo npm ci`. Si `rmdir` indica que el directorio no está vacío, revisar su contenido antes de eliminarlo.
+No ejecutar `sudo npm ci`. `rmdir` solamente elimina el directorio si está vacío.
 
-Si faltan tablas o datos en el modo Docker, ejecutar `docker compose exec backend npm run db:setup`.
+### Borrar la base Docker y comenzar de nuevo
 
-Para borrar todos los datos locales y reconstruir desde cero:
+El siguiente comando es destructivo y elimina todos los datos locales:
 
 ```bash
 docker compose down -v
@@ -302,6 +225,8 @@ docker compose up -d --build
 docker compose exec backend npm run db:setup
 ```
 
-`docker compose down -v` es destructivo: elimina los volúmenes y la base local.
-
 ## Integrantes — completar antes de entregar
+- Conrado Lanusse
+- Francisco Jaszczuk
+- Jano Rodriguez
+- Vladimir Kozik
