@@ -123,6 +123,31 @@ Para detener la API, presionar `Ctrl+C`. PostgreSQL se detiene desde el administ
 
 El healthcheck debe responder con `"status": "OK"`.
 
+Para verificar también la conexión a PostgreSQL, las migraciones y los seeders, iniciar sesión con la cuenta demo:
+
+```bash
+curl -i -X POST http://localhost:3001/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"demo@powerup.com","password":"Demo1234!"}'
+```
+
+En Windows PowerShell:
+
+```powershell
+$body = @{
+  email = 'demo@powerup.com'
+  password = 'Demo1234!'
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://localhost:3001/api/auth/login' `
+  -ContentType 'application/json' `
+  -Body $body
+```
+
+La respuesta debe tener estado HTTP `200`, el mensaje `"Login exitoso"` y un campo `token`. Si falla, revisar la salida de `npm run db:setup` antes de continuar.
+
 Credenciales locales:
 
 | Uso | Usuario | Contraseña |
