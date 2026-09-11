@@ -1,0 +1,370 @@
+@host = http://localhost:3001
+@api = {{host}}/api
+
+# Ejecutar primero "Login demo". Las peticiones de escritura crean recursos del
+# usuario demo y capturan sus IDs para que update/delete no afecten datos globales.
+
+### Healthcheck raiz
+GET {{host}}/health
+
+### Healthcheck API
+GET {{api}}/health
+
+### Registrar un usuario (cambiar el email antes de repetir)
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{
+  "nombre": "Usuario Documentacion",
+  "email": "documentacion@example.com",
+  "password": "Demo1234!"
+}
+
+### Login demo
+# @name login
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo@powerup.com",
+  "password": "Demo1234!"
+}
+
+### Consultar perfil
+GET {{api}}/auth/perfil
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Listar grupos musculares
+GET {{api}}/muscle-groups
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener grupo muscular global
+GET {{api}}/muscle-groups/1
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Crear grupo muscular propio
+# @name createMuscleGroup
+POST {{api}}/muscle-groups
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Antebrazos de prueba"
+}
+
+### Actualizar grupo muscular propio
+PUT {{api}}/muscle-groups/{{createMuscleGroup.response.body.$.muscleGroup.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Antebrazos y agarre"
+}
+
+### Listar ejercicios
+GET {{api}}/exercises
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Listar ejercicios por grupo muscular
+GET {{api}}/exercises?muscleGroupId=1
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener ejercicio global
+GET {{api}}/exercises/3
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Crear ejercicio propio
+# @name createExercise
+POST {{api}}/exercises
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Caminata del granjero",
+  "descripcion": "Ejercicio de fuerza de agarre",
+  "dificultad": "intermedio",
+  "imagen": null,
+  "muscleGroupIds": [{{createMuscleGroup.response.body.$.muscleGroup.id}}]
+}
+
+### Actualizar ejercicio propio
+PUT {{api}}/exercises/{{createExercise.response.body.$.exercise.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "descripcion": "Recorrido con peso para fuerza de agarre",
+  "dificultad": "avanzado"
+}
+
+### Listar plantillas
+GET {{api}}/workout-templates
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener plantilla global
+GET {{api}}/workout-templates/1
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Crear plantilla propia
+# @name createTemplate
+POST {{api}}/workout-templates
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Rutina de documentacion",
+  "descripcion": "Plantilla creada desde requests.http",
+  "tipo": "Fuerza",
+  "grupoMuscularEtiqueta": "Cuerpo completo",
+  "dificultad": "intermedio",
+  "tiempoEstimado": 50
+}
+
+### Actualizar plantilla propia
+PUT {{api}}/workout-templates/{{createTemplate.response.body.$.workoutTemplate.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "tiempoEstimado": 55
+}
+
+### Agregar ejercicio a la plantilla propia
+# @name createTemplateExercise
+POST {{api}}/workout-template-exercises
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "workoutTemplateId": {{createTemplate.response.body.$.workoutTemplate.id}},
+  "exerciseId": {{createExercise.response.body.$.exercise.id}},
+  "orden": 1,
+  "repeticiones": 10,
+  "peso": 24,
+  "rirObjetivo": 2,
+  "rpeObjetivo": 8
+}
+
+### Listar ejercicios de la plantilla
+GET {{api}}/workout-template-exercises?workoutTemplateId={{createTemplate.response.body.$.workoutTemplate.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener ejercicio de plantilla
+GET {{api}}/workout-template-exercises/{{createTemplateExercise.response.body.$.workoutTemplateExercise.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Actualizar ejercicio de plantilla
+PUT {{api}}/workout-template-exercises/{{createTemplateExercise.response.body.$.workoutTemplateExercise.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "repeticiones": 12,
+  "peso": 26,
+  "rpeObjetivo": 8.5
+}
+
+### Listar programas
+GET {{api}}/training-programs
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener programa global
+GET {{api}}/training-programs/1
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Crear programa propio
+# @name createProgram
+POST {{api}}/training-programs
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Programa de fuerza de prueba",
+  "descripcion": "Programa usado para demostrar el contrato",
+  "objetivo": "Aumentar fuerza general",
+  "estado": "activo",
+  "fechaInicio": "2026-09-14T00:00:00Z",
+  "fechaFin": "2026-10-12T00:00:00Z"
+}
+
+### Actualizar programa propio
+PUT {{api}}/training-programs/{{createProgram.response.body.$.trainingProgram.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "objetivo": "Aumentar fuerza y tecnica"
+}
+
+### Crear semana del programa
+# @name createWeek
+POST {{api}}/program-weeks
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "trainingProgramId": {{createProgram.response.body.$.trainingProgram.id}},
+  "numeroSemana": 1,
+  "nombre": "Semana de adaptacion",
+  "objetivo": "Practicar tecnica",
+  "notas": "Mantener dos repeticiones en reserva",
+  "esDescarga": false
+}
+
+### Listar semanas del programa
+GET {{api}}/program-weeks?trainingProgramId={{createProgram.response.body.$.trainingProgram.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener semana
+GET {{api}}/program-weeks/{{createWeek.response.body.$.programWeek.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Actualizar semana
+PUT {{api}}/program-weeks/{{createWeek.response.body.$.programWeek.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "objetivo": "Consolidar la tecnica",
+  "esDescarga": false
+}
+
+### Crear entrenamiento programado
+# @name createScheduledWorkout
+POST {{api}}/scheduled-workouts
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "programWeekId": {{createWeek.response.body.$.programWeek.id}},
+  "workoutTemplateId": {{createTemplate.response.body.$.workoutTemplate.id}},
+  "nombre": "Dia 1 - Fuerza",
+  "diaSemana": 1,
+  "fechaProgramada": "2026-09-14T18:00:00Z",
+  "orden": 1,
+  "notas": "Calentar antes de comenzar"
+}
+
+### Listar entrenamientos programados de la semana
+GET {{api}}/scheduled-workouts?programWeekId={{createWeek.response.body.$.programWeek.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener entrenamiento programado
+GET {{api}}/scheduled-workouts/{{createScheduledWorkout.response.body.$.scheduledWorkout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Actualizar entrenamiento programado
+PUT {{api}}/scheduled-workouts/{{createScheduledWorkout.response.body.$.scheduledWorkout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "diaSemana": 2,
+  "notas": "Reprogramado para el martes"
+}
+
+### Crear entrenamiento realizado con series
+# @name createWorkout
+POST {{api}}/workouts
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Sesion registrada desde requests.http",
+  "timestamp": "2026-09-15T18:30:00Z",
+  "grupoMuscularEtiqueta": "Cuerpo completo",
+  "workoutTemplateId": {{createTemplate.response.body.$.workoutTemplate.id}},
+  "scheduledWorkoutId": {{createScheduledWorkout.response.body.$.scheduledWorkout.id}},
+  "series": [
+    {
+      "exerciseId": {{createExercise.response.body.$.exercise.id}},
+      "repeticiones": 10,
+      "peso": 24,
+      "rir": 2,
+      "rpe": 8
+    },
+    {
+      "exerciseId": 3,
+      "repeticiones": 8,
+      "peso": 80,
+      "rir": 2,
+      "rpe": 8.5
+    }
+  ]
+}
+
+### Listar entrenamientos realizados
+GET {{api}}/workouts
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Obtener entrenamiento realizado
+GET {{api}}/workouts/{{createWorkout.response.body.$.workout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Actualizar entrenamiento y reemplazar sus series
+PUT {{api}}/workouts/{{createWorkout.response.body.$.workout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Sesion corregida desde requests.http",
+  "series": [
+    {
+      "exerciseId": {{createExercise.response.body.$.exercise.id}},
+      "repeticiones": 12,
+      "peso": 26,
+      "rir": 1,
+      "rpe": 9
+    }
+  ]
+}
+
+### Resumen de metricas
+GET {{api}}/metrics/summary
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Resumen de metricas por rango
+GET {{api}}/metrics/summary?from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Mapa de actividad
+GET {{api}}/metrics/activity-heatmap?from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Progreso del ejercicio propio
+GET {{api}}/metrics/exercise-progress?exerciseId={{createExercise.response.body.$.exercise.id}}&from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
+Authorization: Bearer {{login.response.body.$.token}}
+
+# Limpieza: ejecutar en este orden para respetar las relaciones.
+
+### Eliminar entrenamiento realizado
+DELETE {{api}}/workouts/{{createWorkout.response.body.$.workout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Eliminar entrenamiento programado
+DELETE {{api}}/scheduled-workouts/{{createScheduledWorkout.response.body.$.scheduledWorkout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Eliminar semana
+DELETE {{api}}/program-weeks/{{createWeek.response.body.$.programWeek.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Eliminar programa propio
+DELETE {{api}}/training-programs/{{createProgram.response.body.$.trainingProgram.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Eliminar ejercicio de plantilla
+DELETE {{api}}/workout-template-exercises/{{createTemplateExercise.response.body.$.workoutTemplateExercise.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Eliminar plantilla propia
+DELETE {{api}}/workout-templates/{{createTemplate.response.body.$.workoutTemplate.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Eliminar ejercicio propio
+DELETE {{api}}/exercises/{{createExercise.response.body.$.exercise.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Eliminar grupo muscular propio
+DELETE {{api}}/muscle-groups/{{createMuscleGroup.response.body.$.muscleGroup.id}}
+Authorization: Bearer {{login.response.body.$.token}}
