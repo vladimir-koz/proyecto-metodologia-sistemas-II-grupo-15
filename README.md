@@ -173,6 +173,11 @@ Hay 15 pruebas smoke de HTTP, autenticación y validaciones; no prueban PostgreS
 
 `backend/src` contiene la API; `backend/migrations` el esquema; `backend/seeders` los datos demo; y `backend/tests` las pruebas. El flujo principal es `routes → validators/middlewares → controllers → services → repositories → Sequelize → PostgreSQL`.
 
+## Documentación de la API
+
+- [Contrato técnico de endpoints](docs/API.md)
+- [Colección de peticiones para REST Client](requests.http)
+
 ## Problemas frecuentes
 
 ### Puerto ocupado
@@ -225,7 +230,7 @@ docker compose up -d --build
 docker compose exec backend npm run db:setup
 ```
 
-## Integrantes — completar antes de entregar
+## Integrantes
 - Conrado Lanusse
 - Francisco Jaszczuk
 - Jano Rodriguez
