@@ -225,7 +225,7 @@ docker compose up -d --build
 docker compose exec backend npm run db:setup
 ```
 
-## Integrantes — completar antes de entregar
+## Integrantes
 - Conrado Lanusse
 - Francisco Jaszczuk
 - Jano Rodriguez
