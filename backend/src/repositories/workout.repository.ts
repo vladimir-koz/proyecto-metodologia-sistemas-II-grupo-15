@@ -1,5 +1,5 @@
 import { Exercise, ScheduledWorkout, Workout, WorkoutSet, WorkoutTemplate, sequelize } from '../models';
-import { CreateWorkoutBody, UpdateWorkoutBody } from '../types/workout.types';
+import { CreateWorkoutBody, Modalidad, UpdateWorkoutBody } from '../types/workout.types';
 
 const workoutInclude = [
   {
@@ -18,9 +18,9 @@ const workoutInclude = [
   }
 ];
 
-export function findWorkoutsByUser(userId: number): Promise<Workout[]> {
+export function findWorkoutsByUser(userId: number, modalidad: Modalidad): Promise<Workout[]> {
   return Workout.findAll({
-    where: { userId },
+    where: { userId, modalidad },
     include: workoutInclude,
     order: [['timestamp', 'DESC']]
   });
