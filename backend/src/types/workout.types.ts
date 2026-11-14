@@ -33,3 +33,7 @@ export interface UpdateWorkoutBody {
   scheduledWorkoutId?: number | null;
   series?: WorkoutSetInput[];
 }
+
+export interface WorkoutListQuery {
+  modalidad?: string;
+}
