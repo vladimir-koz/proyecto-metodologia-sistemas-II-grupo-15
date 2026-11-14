@@ -12,7 +12,7 @@ import { parseId } from '../utils/parseId';
 export async function listWorkouts(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = getAuthenticatedUserId(req);
-    const workouts = await getWorkouts(userId);
+    const workouts = await getWorkouts(userId, req.query);
     res.json({ workouts });
   } catch (error) {
     next(error);
