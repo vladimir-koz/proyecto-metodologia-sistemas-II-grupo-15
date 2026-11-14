@@ -1,10 +1,14 @@
 import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { MODALIDADES, Modalidad } from '../types/workout.types';
 
 export interface WorkoutAttributes {
   id: number;
   timestamp: Date;
   nombre: string;
   userId: number;
+  modalidad?: Modalidad;
+  distanciaKm?: number | null;
+  duracionSegundos?: number | null;
   grupoMuscularEtiqueta?: string | null;
   workoutTemplateId?: number | null;
   scheduledWorkoutId?: number | null;
@@ -14,7 +18,7 @@ export interface WorkoutAttributes {
 
 type WorkoutCreationAttributes = Optional<
   WorkoutAttributes,
-  'id' | 'timestamp' | 'grupoMuscularEtiqueta' | 'workoutTemplateId' | 'scheduledWorkoutId' | 'createdAt' | 'updatedAt'
+  'id' | 'timestamp' | 'modalidad' | 'distanciaKm' | 'duracionSegundos' | 'grupoMuscularEtiqueta' | 'workoutTemplateId' | 'scheduledWorkoutId' | 'createdAt' | 'updatedAt'
 >;
 
 export class Workout extends Model<WorkoutAttributes, WorkoutCreationAttributes>
@@ -23,6 +27,9 @@ export class Workout extends Model<WorkoutAttributes, WorkoutCreationAttributes>
   public timestamp!: Date;
   public nombre!: string;
   public userId!: number;
+  public modalidad!: Modalidad;
+  public distanciaKm!: number | null;
+  public duracionSegundos!: number | null;
   public grupoMuscularEtiqueta!: string | null;
   public workoutTemplateId!: number | null;
   public scheduledWorkoutId!: number | null;
@@ -54,6 +61,22 @@ export function initWorkoutModel(sequelize: Sequelize): typeof Workout {
       userId: {
         type: DataTypes.INTEGER,
         allowNull: false
+      },
+      modalidad: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        defaultValue: 'fuerza',
+        validate: {
+          isIn: [[...MODALIDADES]]
+        }
+      },
+      distanciaKm: {
+        type: DataTypes.DOUBLE,
+        allowNull: true
+      },
+      duracionSegundos: {
+        type: DataTypes.INTEGER,
+        allowNull: true
       },
       grupoMuscularEtiqueta: {
         type: DataTypes.STRING,
