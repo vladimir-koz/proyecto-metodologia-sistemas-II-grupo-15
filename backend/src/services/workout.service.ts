@@ -8,8 +8,9 @@ import {
   updateWorkoutForUser
 } from '../repositories/workout.repository';
 import { findWorkoutTemplateById } from '../repositories/workoutTemplate.repository';
-import { CreateWorkoutBody, UpdateWorkoutBody, WorkoutSetInput } from '../types/workout.types';
+import { CreateWorkoutBody, UpdateWorkoutBody, WorkoutListQuery, WorkoutSetInput } from '../types/workout.types';
 import { AppError } from '../utils/AppError';
+import { resolverModalidad } from '../utils/modalidad';
 import { getUniquePositiveIntegerIds } from '../utils/validateIds';
 
 async function validarEjerciciosDeSeries(
@@ -109,8 +110,8 @@ async function normalizarPlanificacionWorkout<T extends CreateWorkoutBody | Upda
   return data;
 }
 
-export function getWorkouts(userId: number) {
-  return findWorkoutsByUser(userId);
+export function getWorkouts(userId: number, query: WorkoutListQuery = {}) {
+  return findWorkoutsByUser(userId, resolverModalidad(query.modalidad));
 }
 
 export async function getWorkout(userId: number, id: number) {
