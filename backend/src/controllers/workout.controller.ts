@@ -4,6 +4,7 @@ import {
   deleteWorkoutService,
   getWorkout,
   getWorkouts,
+  serializeWorkout,
   updateWorkoutService
 } from '../services/workout.service';
 import { getAuthenticatedUserId } from '../utils/getAuthenticatedUserId';
@@ -13,7 +14,7 @@ export async function listWorkouts(req: Request, res: Response, next: NextFuncti
   try {
     const userId = getAuthenticatedUserId(req);
     const workouts = await getWorkouts(userId, req.query);
-    res.json({ workouts });
+    res.json({ workouts: workouts.map((workout) => serializeWorkout(workout)) });
   } catch (error) {
     next(error);
   }
@@ -23,7 +24,7 @@ export async function getWorkoutById(req: Request, res: Response, next: NextFunc
   try {
     const userId = getAuthenticatedUserId(req);
     const workout = await getWorkout(userId, parseId(req.params.id));
-    res.json({ workout });
+    res.json({ workout: serializeWorkout(workout) });
   } catch (error) {
     next(error);
   }
@@ -33,7 +34,7 @@ export async function createWorkout(req: Request, res: Response, next: NextFunct
   try {
     const userId = getAuthenticatedUserId(req);
     const workout = await createWorkoutService(userId, req.body);
-    res.status(201).json({ workout });
+    res.status(201).json({ workout: serializeWorkout(workout) });
   } catch (error) {
     next(error);
   }
@@ -43,7 +44,7 @@ export async function updateWorkout(req: Request, res: Response, next: NextFunct
   try {
     const userId = getAuthenticatedUserId(req);
     const workout = await updateWorkoutService(userId, parseId(req.params.id), req.body);
-    res.json({ workout });
+    res.json({ workout: serializeWorkout(workout) });
   } catch (error) {
     next(error);
   }
