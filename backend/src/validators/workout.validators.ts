@@ -8,6 +8,25 @@ const optionalPositiveId = (field: string) => body(field)
   .toInt();
 
 const commonWorkoutRules = [
+  body('modalidad')
+    .optional()
+    .isString()
+    .withMessage('modalidad debe ser texto')
+    .isIn([...MODALIDADES])
+    .withMessage(`modalidad debe ser una de: ${MODALIDADES.join(', ')}`),
+
+  body('distanciaKm')
+    .optional({ nullable: true })
+    .isFloat({ gt: 0 })
+    .withMessage('distanciaKm debe ser un numero positivo')
+    .toFloat(),
+
+  body('duracionSegundos')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('duracionSegundos debe ser un entero positivo')
+    .toInt(),
+
   body('timestamp')
     .optional()
     .isISO8601()
