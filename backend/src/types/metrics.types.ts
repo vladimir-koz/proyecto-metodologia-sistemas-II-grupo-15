@@ -3,6 +3,7 @@ import { Modalidad } from './workout.types';
 export interface MetricsQuery {
   from?: string;
   to?: string;
+  modalidad?: string;
 }
 
 export interface ExerciseProgressQuery extends MetricsQuery {
