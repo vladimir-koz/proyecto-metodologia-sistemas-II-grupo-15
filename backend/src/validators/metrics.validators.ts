@@ -1,4 +1,5 @@
 import { query } from 'express-validator';
+import { MODALIDADES } from '../types/workout.types';
 
 export const metricsRangeValidator = [
   query('from')
@@ -9,6 +10,17 @@ export const metricsRangeValidator = [
     .optional()
     .isISO8601()
     .withMessage('to debe ser una fecha valida')
+];
+
+/** Resumen y calendario: rango opcional y modalidad opcional (fuerza por defecto). */
+export const metricsQueryValidator = [
+  ...metricsRangeValidator,
+  query('modalidad')
+    .optional()
+    .custom((value) => typeof value === 'string')
+    .withMessage('modalidad debe ser texto')
+    .isIn([...MODALIDADES])
+    .withMessage(`modalidad debe ser una de: ${MODALIDADES.join(', ')}`)
 ];
 
 export const exerciseProgressValidator = [
