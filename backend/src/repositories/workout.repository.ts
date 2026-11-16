@@ -18,6 +18,32 @@ const workoutInclude = [
   }
 ];
 
+/**
+ * Solo estos campos se toman del body. Propiedad (userId), identificadores y
+ * fechas internas nunca se aceptan como campos editables.
+ */
+const EDITABLE_FIELDS = [
+  'nombre',
+  'modalidad',
+  'distanciaKm',
+  'duracionSegundos',
+  'grupoMuscularEtiqueta',
+  'workoutTemplateId',
+  'scheduledWorkoutId'
+] as const;
+
+function pickEditableFields(data: CreateWorkoutBody | UpdateWorkoutBody): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+
+  for (const field of EDITABLE_FIELDS) {
+    if (data[field] !== undefined) {
+      picked[field] = data[field];
+    }
+  }
+
+  return picked;
+}
+
 export function findWorkoutsByUser(userId: number, modalidad: Modalidad): Promise<Workout[]> {
   return Workout.findAll({
     where: { userId, modalidad },
@@ -37,12 +63,13 @@ export async function createWorkoutForUser(
   userId: number,
   data: CreateWorkoutBody
 ): Promise<Workout | null> {
-  const { series = [], timestamp, ...workoutData } = data;
+  const { series = [], timestamp } = data;
+  const workoutData = pickEditableFields(data);
 
   const workout = await sequelize.transaction(async (transaction) => {
     const createdWorkout = await Workout.create(
       {
-        ...workoutData,
+        ...(workoutData as { nombre: string }),
         timestamp: timestamp ? new Date(timestamp) : new Date(),
         userId
       },
@@ -70,7 +97,8 @@ export async function updateWorkoutForUser(
   userId: number,
   data: UpdateWorkoutBody
 ): Promise<Workout | null> {
-  const { series, timestamp, ...workoutData } = data;
+  const { series, timestamp } = data;
+  const workoutData = pickEditableFields(data);
 
   await sequelize.transaction(async (transaction) => {
     await workout.update(
