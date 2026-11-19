@@ -1,3 +1,7 @@
+export const MODALIDADES = ['fuerza', 'running'] as const;
+
+export type Modalidad = typeof MODALIDADES[number];
+
 export interface WorkoutSetInput {
   repeticiones: number;
   peso: number;
@@ -9,6 +13,9 @@ export interface WorkoutSetInput {
 export interface CreateWorkoutBody {
   timestamp?: string;
   nombre: string;
+  modalidad?: Modalidad;
+  distanciaKm?: number | null;
+  duracionSegundos?: number | null;
   grupoMuscularEtiqueta?: string;
   workoutTemplateId?: number | null;
   scheduledWorkoutId?: number | null;
@@ -18,8 +25,15 @@ export interface CreateWorkoutBody {
 export interface UpdateWorkoutBody {
   timestamp?: string;
   nombre?: string;
+  modalidad?: Modalidad;
+  distanciaKm?: number | null;
+  duracionSegundos?: number | null;
   grupoMuscularEtiqueta?: string;
   workoutTemplateId?: number | null;
   scheduledWorkoutId?: number | null;
   series?: WorkoutSetInput[];
+}
+
+export interface WorkoutListQuery {
+  modalidad?: string;
 }

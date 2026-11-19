@@ -9,13 +9,13 @@ import {
 import { verificarToken } from '../middlewares/auth.middleware';
 import { validateRequest } from '../middlewares/validateRequest.middleware';
 import { idParamValidator } from '../validators/common.validators';
-import { createWorkoutValidator, updateWorkoutValidator } from '../validators/workout.validators';
+import { createWorkoutValidator, listWorkoutsValidator, updateWorkoutValidator } from '../validators/workout.validators';
 
 const router = Router();
 
 router.use(verificarToken);
 
-router.get('/', listWorkouts);
+router.get('/', listWorkoutsValidator, validateRequest, listWorkouts);
 router.get('/:id', idParamValidator, validateRequest, getWorkoutById);
 router.post('/', createWorkoutValidator, validateRequest, createWorkout);
 router.put('/:id', idParamValidator, updateWorkoutValidator, validateRequest, updateWorkout);

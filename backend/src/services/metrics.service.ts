@@ -1,8 +1,11 @@
 import { findExerciseById } from '../repositories/exercise.repository';
 import { findMetricWorkouts } from '../repositories/metrics.repository';
-import { MetricsQuery } from '../types/metrics.types';
+import { MetricsQuery, MetricWorkout, RunningMetrics } from '../types/metrics.types';
+import { Modalidad } from '../types/workout.types';
 import { AppError } from '../utils/AppError';
+import { resolverModalidad } from '../utils/modalidad';
 import { Workout, WorkoutSet } from '../models';
+import { getMetricsStrategy } from './strategies';
 
 function parseOptionalDate(value: string | undefined, fieldName: string): Date | undefined {
   if (value === undefined) {
@@ -33,10 +36,6 @@ function round(value: number, decimals = 2): number {
   return Number(value.toFixed(decimals));
 }
 
-function toDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 function getWorkoutSets(workout: Workout): WorkoutSet[] {
   return (workout.get('series') as WorkoutSet[] | undefined) ?? [];
 }
@@ -57,26 +56,43 @@ function getEstimatedOneRepMax(set: WorkoutSet): number {
   return set.peso * (1 + set.repeticiones / 30);
 }
 
-export async function getMetricsSummary(userId: number, query: MetricsQuery) {
+/** Convierte los modelos Sequelize en datos planos para las estrategias. */
+function toMetricWorkout(workout: Workout): MetricWorkout {
+  return {
+    id: workout.id,
+    nombre: workout.nombre,
+    timestamp: workout.timestamp,
+    scheduledWorkoutId: workout.scheduledWorkoutId,
+    distanciaKm: workout.distanciaKm ?? null,
+    duracionSegundos: workout.duracionSegundos ?? null,
+    series: getWorkoutSets(workout).map((set) => ({
+      exerciseId: set.exerciseId,
+      repeticiones: set.repeticiones,
+      peso: set.peso,
+      rir: set.rir ?? null,
+      rpe: set.rpe ?? null
+    }))
+  };
+}
+
+/**
+ * Consulta los datos autorizados del usuario para la modalidad indicada
+ * y delega el calculo en la estrategia correspondiente.
+ */
+async function calcularMetricas(userId: number, query: MetricsQuery, modalidad: Modalidad) {
   const range = parseRange(query);
-  const workouts = await findMetricWorkouts(userId, range);
-  const sets = workouts.flatMap(getWorkoutSets);
-  const totalVolume = sets.reduce((total, set) => total + getSetVolume(set), 0);
-  const totalRepetitions = sets.reduce((total, set) => total + set.repeticiones, 0);
-  const rpeValues = sets.map((set) => set.rpe).filter((value): value is number => value !== null && value !== undefined);
-  const rirValues = sets.map((set) => set.rir).filter((value): value is number => value !== null && value !== undefined);
+  const strategy = getMetricsStrategy(modalidad);
+  const workouts = await findMetricWorkouts(userId, range, modalidad);
+
+  return { range, metrics: strategy.calculate(workouts.map(toMetricWorkout)) };
+}
+
+export async function getMetricsSummary(userId: number, query: MetricsQuery) {
+  const { range, metrics } = await calcularMetricas(userId, query, resolverModalidad(query.modalidad));
 
   return {
     summary: {
-      workouts: workouts.length,
-      completedScheduledWorkouts: workouts.filter((workout) => workout.scheduledWorkoutId !== null).length,
-      freeWorkouts: workouts.filter((workout) => workout.scheduledWorkoutId === null).length,
-      totalSets: sets.length,
-      totalRepetitions,
-      totalVolume: round(totalVolume),
-      averageSetsPerWorkout: workouts.length > 0 ? round(sets.length / workouts.length) : 0,
-      averageRpe: getAverage(rpeValues),
-      averageRir: getAverage(rirValues),
+      ...(metrics.summary as object),
       range: {
         from: range.from?.toISOString() ?? null,
         to: range.to?.toISOString() ?? null
@@ -86,44 +102,15 @@ export async function getMetricsSummary(userId: number, query: MetricsQuery) {
 }
 
 export async function getActivityHeatmap(userId: number, query: MetricsQuery) {
-  const range = parseRange(query);
-  const workouts = await findMetricWorkouts(userId, range);
-  const days = new Map<string, {
-    date: string;
-    workoutCount: number;
-    completedScheduledWorkouts: number;
-    setCount: number;
-    totalVolume: number;
-  }>();
+  const { metrics } = await calcularMetricas(userId, query, resolverModalidad(query.modalidad));
 
-  for (const workout of workouts) {
-    const date = toDateKey(workout.timestamp);
-    const sets = getWorkoutSets(workout);
-    const current = days.get(date) ?? {
-      date,
-      workoutCount: 0,
-      completedScheduledWorkouts: 0,
-      setCount: 0,
-      totalVolume: 0
-    };
+  return { activity: metrics.activity };
+}
 
-    current.workoutCount += 1;
-    current.completedScheduledWorkouts += workout.scheduledWorkoutId !== null ? 1 : 0;
-    current.setCount += sets.length;
-    current.totalVolume += sets.reduce((total, set) => total + getSetVolume(set), 0);
-    days.set(date, current);
-  }
+export async function getRunningProgress(userId: number, query: MetricsQuery) {
+  const { metrics } = await calcularMetricas(userId, query, 'running');
 
-  const activity = Array.from(days.values());
-  const maxVolume = Math.max(0, ...activity.map((day) => day.totalVolume));
-
-  return {
-    activity: activity.map((day) => ({
-      ...day,
-      totalVolume: round(day.totalVolume),
-      intensityLevel: maxVolume > 0 ? Math.max(1, Math.ceil((day.totalVolume / maxVolume) * 4)) : Math.min(day.workoutCount, 4)
-    }))
-  };
+  return { progress: (metrics as RunningMetrics).progress };
 }
 
 export async function getExerciseProgress(userId: number, exerciseId: number, query: MetricsQuery) {

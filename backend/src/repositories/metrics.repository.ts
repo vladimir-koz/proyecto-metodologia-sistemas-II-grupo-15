@@ -1,9 +1,10 @@
 import { Op, WhereOptions } from 'sequelize';
 import { Exercise, Workout, WorkoutSet } from '../models';
 import { ParsedMetricsRange } from '../types/metrics.types';
+import { Modalidad } from '../types/workout.types';
 
-function buildWorkoutWhere(userId: number, range: ParsedMetricsRange): WhereOptions {
-  const where: WhereOptions = { userId };
+function buildWorkoutWhere(userId: number, range: ParsedMetricsRange, modalidad: Modalidad): WhereOptions {
+  const where: WhereOptions = { userId, modalidad };
 
   if (range.from || range.to) {
     where.timestamp = {
@@ -15,9 +16,13 @@ function buildWorkoutWhere(userId: number, range: ParsedMetricsRange): WhereOpti
   return where;
 }
 
-export function findMetricWorkouts(userId: number, range: ParsedMetricsRange): Promise<Workout[]> {
+export function findMetricWorkouts(
+  userId: number,
+  range: ParsedMetricsRange,
+  modalidad: Modalidad = 'fuerza'
+): Promise<Workout[]> {
   return Workout.findAll({
-    where: buildWorkoutWhere(userId, range),
+    where: buildWorkoutWhere(userId, range, modalidad),
     include: [
       {
         model: WorkoutSet,

@@ -1,4 +1,5 @@
-import { body } from 'express-validator';
+import { body, query } from 'express-validator';
+import { MODALIDADES } from '../types/workout.types';
 
 const optionalPositiveId = (field: string) => body(field)
   .optional({ nullable: true })
@@ -7,6 +8,25 @@ const optionalPositiveId = (field: string) => body(field)
   .toInt();
 
 const commonWorkoutRules = [
+  body('modalidad')
+    .optional()
+    .isString()
+    .withMessage('modalidad debe ser texto')
+    .isIn([...MODALIDADES])
+    .withMessage(`modalidad debe ser una de: ${MODALIDADES.join(', ')}`),
+
+  body('distanciaKm')
+    .optional({ nullable: true })
+    .isFloat({ gt: 0 })
+    .withMessage('distanciaKm debe ser un numero positivo')
+    .toFloat(),
+
+  body('duracionSegundos')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('duracionSegundos debe ser un entero positivo')
+    .toInt(),
+
   body('timestamp')
     .optional()
     .isISO8601()
@@ -78,4 +98,13 @@ export const updateWorkoutValidator = [
     .isLength({ min: 2 })
     .withMessage('El nombre debe tener al menos 2 caracteres'),
   ...commonWorkoutRules
+];
+
+export const listWorkoutsValidator = [
+  query('modalidad')
+    .optional()
+    .custom((value) => typeof value === 'string')
+    .withMessage('modalidad debe ser texto')
+    .isIn([...MODALIDADES])
+    .withMessage(`modalidad debe ser una de: ${MODALIDADES.join(', ')}`)
 ];
