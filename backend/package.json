@@ -15,6 +15,7 @@
     "seed": "npx sequelize-cli db:seed:all",
     "db:setup": "npm run migrate && npm run seed",
     "test": "npm run build && jest --runInBand",
+    "test:auth": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/auth.test.js\"",
     "test:unit": "npm run build && jest --runInBand --testMatch \"<rootDir>/tests/unit/**/*.test.js\"",
     "test:http": "npm run build && jest --runInBand --testMatch \"<rootDir>/tests/http/**/*.test.js\"",
     "test:migrations": "jest --runInBand --testMatch \"<rootDir>/integration/**/*.test.js\""
