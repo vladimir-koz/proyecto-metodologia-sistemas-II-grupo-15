@@ -3,7 +3,7 @@ process.env.JWT_SECRET = 'clave_jwt_exclusiva_para_tests';
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
-const app = require('../dist/app').default;
+const app = require('../../dist/app').default;
 
 const token = jwt.sign(
   { id: 1, email: 'test@example.com' },
