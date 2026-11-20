@@ -1,36 +1,7 @@
-const { randomUUID } = require('node:crypto');
-
-const testingUrl = process.env.AUTH_TEST_DATABASE_URL;
-const connection = testingUrl ? new URL(testingUrl) : null;
-if (
-  !connection ||
-  !['postgres:', 'postgresql:'].includes(connection.protocol) ||
-  !['127.0.0.1', 'localhost', '[::1]'].includes(connection.hostname) ||
-  !connection.port ||
-  connection.pathname !== '/powerup_auth_integration_test' ||
-  connection.username !== 'powerup_auth_test' || !connection.password ||
-  connection.search || connection.hash
-) {
-  throw new Error(
-    'AUTH_TEST_DATABASE_URL debe indicar PostgreSQL local descartable, puerto explícito, usuario powerup_auth_test y base powerup_auth_integration_test, sin parámetros ni fragmentos.'
-  );
-}
-
-const schema = `auth_test_${randomUUID().replace(/-/g, '')}`;
-// Configurar antes de importar la aplicación: nunca cargar el .env del proyecto.
-process.env.NODE_ENV = 'test';
-process.env.DOTENV_CONFIG_PATH = '/dev/null';
-process.env.DATABASE_URL = testingUrl;
-process.env.DB_HOST = connection.hostname;
-process.env.DB_PORT = connection.port;
-process.env.DB_USER = decodeURIComponent(connection.username);
-process.env.DB_PASSWORD = decodeURIComponent(connection.password);
-process.env.DB_NAME = 'powerup_auth_integration';
-process.env.DB_SSL = 'false';
-process.env.PGSSLMODE = 'disable';
-// pg aplica este search_path a todas las conexiones del pool, sin incluir public.
-process.env.PGOPTIONS = `-c search_path=${schema}`;
-process.env.JWT_SECRET = 'clave_jwt_exclusiva_para_integracion';
+const { configureIntegrationDatabase } = require('./database');
+const { connection, schema } = configureIntegrationDatabase(
+  'AUTH_TEST_DATABASE_URL', 'powerup_auth_integration_test', 'powerup_auth_test'
+);
 
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
