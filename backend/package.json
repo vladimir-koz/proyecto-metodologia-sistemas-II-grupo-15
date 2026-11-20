@@ -14,7 +14,8 @@
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
     "db:setup": "npm run migrate && npm run seed",
-    "test": "npm run build && jest --runInBand"
+    "test": "npm run build && jest --runInBand",
+    "test:migrations": "jest --runInBand --testMatch \"<rootDir>/integration/**/*.test.js\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
