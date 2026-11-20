@@ -1,7 +1,6 @@
 import { findExerciseById } from '../repositories/exercise.repository';
 import { findMetricWorkouts } from '../repositories/metrics.repository';
-import { MetricsQuery, MetricWorkout, RunningMetrics } from '../types/metrics.types';
-import { Modalidad } from '../types/workout.types';
+import { MetricsQuery, MetricsStrategy, MetricWorkout, ModalityMetrics } from '../types/metrics.types';
 import { AppError } from '../utils/AppError';
 import { resolverModalidad } from '../utils/modalidad';
 import { Workout, WorkoutSet } from '../models';
@@ -79,20 +78,24 @@ function toMetricWorkout(workout: Workout): MetricWorkout {
  * Consulta los datos autorizados del usuario para la modalidad indicada
  * y delega el calculo en la estrategia correspondiente.
  */
-async function calcularMetricas(userId: number, query: MetricsQuery, modalidad: Modalidad) {
+async function calcularMetricas<TMetrics extends ModalityMetrics>(
+  userId: number,
+  query: MetricsQuery,
+  strategy: MetricsStrategy<TMetrics>
+) {
   const range = parseRange(query);
-  const strategy = getMetricsStrategy(modalidad);
-  const workouts = await findMetricWorkouts(userId, range, modalidad);
+  const workouts = await findMetricWorkouts(userId, range, strategy.modalidad);
 
   return { range, metrics: strategy.calculate(workouts.map(toMetricWorkout)) };
 }
 
 export async function getMetricsSummary(userId: number, query: MetricsQuery) {
-  const { range, metrics } = await calcularMetricas(userId, query, resolverModalidad(query.modalidad));
+  const strategy = getMetricsStrategy(resolverModalidad(query.modalidad));
+  const { range, metrics } = await calcularMetricas(userId, query, strategy);
 
   return {
     summary: {
-      ...(metrics.summary as object),
+      ...metrics.summary,
       range: {
         from: range.from?.toISOString() ?? null,
         to: range.to?.toISOString() ?? null
@@ -102,15 +105,16 @@ export async function getMetricsSummary(userId: number, query: MetricsQuery) {
 }
 
 export async function getActivityHeatmap(userId: number, query: MetricsQuery) {
-  const { metrics } = await calcularMetricas(userId, query, resolverModalidad(query.modalidad));
+  const strategy = getMetricsStrategy(resolverModalidad(query.modalidad));
+  const { metrics } = await calcularMetricas(userId, query, strategy);
 
   return { activity: metrics.activity };
 }
 
 export async function getRunningProgress(userId: number, query: MetricsQuery) {
-  const { metrics } = await calcularMetricas(userId, query, 'running');
+  const { metrics } = await calcularMetricas(userId, query, getMetricsStrategy('running'));
 
-  return { progress: (metrics as RunningMetrics).progress };
+  return { progress: metrics.progress };
 }
 
 export async function getExerciseProgress(userId: number, exerciseId: number, query: MetricsQuery) {

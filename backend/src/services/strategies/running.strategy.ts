@@ -73,8 +73,9 @@ function calculateProgress(workouts: MetricWorkout[]): RunningProgressItem[] {
   }));
 }
 
-export const runningStrategy: MetricsStrategy<RunningMetrics> = {
-  modalidad: 'running',
+export class RunningStrategy implements MetricsStrategy<RunningMetrics> {
+  readonly modalidad = 'running';
+
   calculate(workouts: MetricWorkout[]): RunningMetrics {
     return {
       summary: calculateSummary(workouts),
@@ -82,4 +83,6 @@ export const runningStrategy: MetricsStrategy<RunningMetrics> = {
       progress: calculateProgress(workouts)
     };
   }
-};
+}
+
+export const runningStrategy = new RunningStrategy();
