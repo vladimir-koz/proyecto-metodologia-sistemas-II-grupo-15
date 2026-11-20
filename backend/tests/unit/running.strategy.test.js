@@ -1,4 +1,4 @@
-const { runningStrategy } = require('../dist/services/strategies/running.strategy');
+const { runningStrategy } = require('../../dist/services/strategies/running.strategy');
 
 describe('Métricas de running', () => {
   const cincoKm = {

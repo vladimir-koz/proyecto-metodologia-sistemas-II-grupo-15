@@ -1,4 +1,4 @@
-const { strengthStrategy } = require('../dist/services/strategies/strength.strategy');
+const { strengthStrategy } = require('../../dist/services/strategies/strength.strategy');
 
 describe('Métricas de fuerza', () => {
   const libre = {
