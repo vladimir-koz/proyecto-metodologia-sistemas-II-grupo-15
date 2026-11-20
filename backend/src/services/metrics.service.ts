@@ -5,6 +5,7 @@ import { AppError } from '../utils/AppError';
 import { resolverModalidad } from '../utils/modalidad';
 import { Workout, WorkoutSet } from '../models';
 import { getMetricsStrategy } from './strategies';
+import { getAverage, getEstimatedOneRepMax, getSetVolume, round } from './strategies/metrics.helpers';
 
 function parseOptionalDate(value: string | undefined, fieldName: string): Date | undefined {
   if (value === undefined) {
@@ -31,28 +32,8 @@ function parseRange(query: MetricsQuery) {
   return { from, to };
 }
 
-function round(value: number, decimals = 2): number {
-  return Number(value.toFixed(decimals));
-}
-
 function getWorkoutSets(workout: Workout): WorkoutSet[] {
   return (workout.get('series') as WorkoutSet[] | undefined) ?? [];
-}
-
-function getSetVolume(set: WorkoutSet): number {
-  return set.repeticiones * set.peso;
-}
-
-function getAverage(values: number[]): number | null {
-  if (values.length === 0) {
-    return null;
-  }
-
-  return round(values.reduce((total, value) => total + value, 0) / values.length);
-}
-
-function getEstimatedOneRepMax(set: WorkoutSet): number {
-  return set.peso * (1 + set.repeticiones / 30);
 }
 
 /** Convierte los modelos Sequelize en datos planos para las estrategias. */
