@@ -1,4 +1,4 @@
-const { getMetricsStrategy } = require('../dist/services/strategies');
+const { getMetricsStrategy } = require('../../dist/services/strategies');
 
 describe('Selección de Strategy por modalidad', () => {
   test('seleccionar fuerza permite calcular su resumen y calendario', () => {
