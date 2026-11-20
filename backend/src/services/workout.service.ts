@@ -149,8 +149,12 @@ function validarReglasDeModalidad(
       throw new AppError('distanciaKm debe ser un numero positivo', 400);
     }
 
-    if (!Number.isInteger(final.duracionSegundos) || (final.duracionSegundos as number) <= 0) {
-      throw new AppError('duracionSegundos debe ser un entero positivo', 400);
+    if (
+      !Number.isInteger(final.duracionSegundos) ||
+      (final.duracionSegundos as number) < 1 ||
+      (final.duracionSegundos as number) > 2147483647
+    ) {
+      throw new AppError('duracionSegundos debe ser un entero entre 1 y 2147483647', 400);
     }
 
     if (Array.isArray(series) && series.length > 0) {

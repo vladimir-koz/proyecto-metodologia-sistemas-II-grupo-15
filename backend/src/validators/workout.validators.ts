@@ -23,8 +23,8 @@ const commonWorkoutRules = [
 
   body('duracionSegundos')
     .optional({ nullable: true })
-    .isInt({ min: 1 })
-    .withMessage('duracionSegundos debe ser un entero positivo')
+    .isInt({ min: 1, max: 2147483647 })
+    .withMessage('duracionSegundos debe ser un entero entre 1 y 2147483647')
     .toInt(),
 
   body('timestamp')
