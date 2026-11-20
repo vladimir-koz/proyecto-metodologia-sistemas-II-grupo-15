@@ -57,12 +57,15 @@ function calculateActivity(workouts: MetricWorkout[]): StrengthActivityDay[] {
   }));
 }
 
-export const strengthStrategy: MetricsStrategy<StrengthMetrics> = {
-  modalidad: 'fuerza',
+export class StrengthStrategy implements MetricsStrategy<StrengthMetrics> {
+  readonly modalidad = 'fuerza';
+
   calculate(workouts: MetricWorkout[]): StrengthMetrics {
     return {
       summary: calculateSummary(workouts),
       activity: calculateActivity(workouts)
     };
   }
-};
+}
+
+export const strengthStrategy = new StrengthStrategy();
