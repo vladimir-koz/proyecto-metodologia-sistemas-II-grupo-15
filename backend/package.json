@@ -18,6 +18,7 @@
     "test:metrics": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/metrics.test.js\"",
     "test:workouts": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/workouts.test.js\"",
     "test:auth": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/auth.test.js\"",
+    "test:planning": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/planning.test.js\"",
     "test:unit": "npm run build && jest --runInBand --testMatch \"<rootDir>/tests/unit/**/*.test.js\"",
     "test:http": "npm run build && jest --runInBand --testMatch \"<rootDir>/tests/http/**/*.test.js\"",
     "test:migrations": "jest --runInBand --testMatch \"<rootDir>/integration/**/*.test.js\""
