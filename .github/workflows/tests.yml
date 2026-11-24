@@ -63,3 +63,21 @@ jobs:
       - run: npm run test:auth
       - run: npm run test:workouts
       - run: npm run test:metrics
+
+  frontend:
+    name: Frontend de demostración
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      # Verifica los tipos con TypeScript y genera la versión que sirve Nginx.
+      - run: npm run build
