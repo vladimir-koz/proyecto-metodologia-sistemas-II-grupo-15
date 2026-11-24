@@ -319,6 +319,61 @@ Content-Type: application/json
   ]
 }
 
+### Crear carrera de running (5 km en 30 min: 360 s/km y 10 km/h)
+# @name createRun
+POST {{api}}/workouts
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Carrera libre desde requests.http",
+  "modalidad": "running",
+  "timestamp": "2026-09-16T07:00:00Z",
+  "distanciaKm": 5,
+  "duracionSegundos": 1800
+}
+
+### Listar carreras de running (sin modalidad, el listado devuelve solo fuerza)
+GET {{api}}/workouts?modalidad=running
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Actualizar solo la duracion de la carrera (recalcula ritmo y velocidad)
+PUT {{api}}/workouts/{{createRun.response.body.$.workout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "duracionSegundos": 1500
+}
+
+### Error esperado: running con series responde 400
+POST {{api}}/workouts
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "nombre": "Carrera invalida",
+  "modalidad": "running",
+  "distanciaKm": 5,
+  "duracionSegundos": 1800,
+  "series": [
+    {
+      "exerciseId": 3,
+      "repeticiones": 10,
+      "peso": 50
+    }
+  ]
+}
+
+### Error esperado: cambiar la modalidad responde 400
+PUT {{api}}/workouts/{{createRun.response.body.$.workout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "modalidad": "fuerza"
+}
+
 ### Resumen de metricas
 GET {{api}}/metrics/summary
 Authorization: Bearer {{login.response.body.$.token}}
@@ -335,7 +390,23 @@ Authorization: Bearer {{login.response.body.$.token}}
 GET {{api}}/metrics/exercise-progress?exerciseId={{createExercise.response.body.$.exercise.id}}&from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
 Authorization: Bearer {{login.response.body.$.token}}
 
+### Resumen de running por rango
+GET {{api}}/metrics/summary?modalidad=running&from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Mapa de actividad de running
+GET {{api}}/metrics/activity-heatmap?modalidad=running&from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
+Authorization: Bearer {{login.response.body.$.token}}
+
+### Progreso de running
+GET {{api}}/metrics/running-progress?from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
+Authorization: Bearer {{login.response.body.$.token}}
+
 # Limpieza: ejecutar en este orden para respetar las relaciones.
+
+### Eliminar carrera de running
+DELETE {{api}}/workouts/{{createRun.response.body.$.workout.id}}
+Authorization: Bearer {{login.response.body.$.token}}
 
 ### Eliminar entrenamiento realizado
 DELETE {{api}}/workouts/{{createWorkout.response.body.$.workout.id}}
