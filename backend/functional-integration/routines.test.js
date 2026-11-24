@@ -133,4 +133,33 @@ describe('Rutinas con Express, Sequelize y PostgreSQL reales', () => {
     expect(await WorkoutTemplate.findByPk(templateId, { raw: true })).toEqual(originalTemplate);
     expect(await WorkoutTemplateExercise.findByPk(associationId, { raw: true })).toEqual(originalAssociation);
   });
+
+  test('actualiza campos nullable, conserva los omitidos y persiste los cambios', async () => {
+    const created = await request(app).post('/api/workout-templates')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        nombre: 'Rutina nullable', descripcion: 'Descripción inicial', tipo: 'Fuerza',
+        grupoMuscularEtiqueta: 'Piernas', dificultad: 'principiante'
+      }).expect(201);
+    const templateId = created.body.workoutTemplate.id;
+
+    const updated = await request(app).put(`/api/workout-templates/${templateId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ descripcion: null, tipo: '  Movilidad  ' }).expect(200);
+    const expected = {
+      id: templateId, nombre: 'Rutina nullable', descripcion: null, tipo: 'Movilidad',
+      grupoMuscularEtiqueta: 'Piernas', dificultad: 'principiante'
+    };
+    expect(updated.body.workoutTemplate).toMatchObject(expected);
+    expect(await WorkoutTemplate.findByPk(templateId, { raw: true })).toMatchObject(expected);
+
+    const cleared = await request(app).put(`/api/workout-templates/${templateId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ tipo: null, grupoMuscularEtiqueta: null, dificultad: null }).expect(200);
+    const clearedExpected = {
+      ...expected, tipo: null, grupoMuscularEtiqueta: null, dificultad: null
+    };
+    expect(cleared.body.workoutTemplate).toMatchObject(clearedExpected);
+    expect(await WorkoutTemplate.findByPk(templateId, { raw: true })).toMatchObject(clearedExpected);
+  });
 });
