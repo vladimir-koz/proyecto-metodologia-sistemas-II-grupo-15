@@ -68,10 +68,10 @@ export async function updateWorkoutTemplate(id: number, data: WorkoutTemplateReq
 
   const updatedWorkoutTemplate = await updateWorkoutTemplateRepo(id, {
     nombre: data.nombre?.trim(),
-    descripcion: data.descripcion !== undefined ? data.descripcion.trim() || null : undefined,
-    tipo: data.tipo !== undefined ? data.tipo.trim() || null : undefined,
-    grupoMuscularEtiqueta: data.grupoMuscularEtiqueta !== undefined ? data.grupoMuscularEtiqueta.trim() || null : undefined,
-    dificultad: data.dificultad !== undefined ? data.dificultad.trim() || null : undefined,
+    descripcion: data.descripcion !== undefined ? data.descripcion?.trim() || null : undefined,
+    tipo: data.tipo !== undefined ? data.tipo?.trim() || null : undefined,
+    grupoMuscularEtiqueta: data.grupoMuscularEtiqueta !== undefined ? data.grupoMuscularEtiqueta?.trim() || null : undefined,
+    dificultad: data.dificultad !== undefined ? data.dificultad?.trim() || null : undefined,
     tiempoEstimado: data.tiempoEstimado !== undefined ? data.tiempoEstimado : undefined
   }, userId);
 

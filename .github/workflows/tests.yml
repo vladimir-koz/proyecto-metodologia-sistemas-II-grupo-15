@@ -1,0 +1,67 @@
+# Ejecuta automáticamente las pruebas documentadas en docs/testing.md.
+# No despliega nada: solo compila y verifica el backend.
+name: Tests
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  unit-http:
+    name: Compilación, unitarias y HTTP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      # Compila con TypeScript y ejecuta las 33 pruebas que no requieren base de datos.
+      - run: npm test
+
+  integration:
+    name: Integración con PostgreSQL 17
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://powerup_migration_test:powerup_test@localhost:5432/powerup_running_migration_test
+      AUTH_TEST_DATABASE_URL: postgres://powerup_auth_test:powerup_test@localhost:5432/powerup_auth_integration_test
+      WORKOUTS_TEST_DATABASE_URL: postgres://powerup_workouts_test:powerup_test@localhost:5432/powerup_workouts_integration_test
+      METRICS_TEST_DATABASE_URL: postgres://powerup_metrics_test:powerup_test@localhost:5432/powerup_metrics_integration_test
+      ROUTINES_TEST_DATABASE_URL: postgres://powerup_routines_test:powerup_test@localhost:5432/powerup_routines_integration_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Crear bases y usuarios de prueba
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f integration/setup-test-databases.sql
+      - run: npm run test:migrations
+      - run: npm run test:auth
+      - run: npm run test:workouts
+      - run: npm run test:metrics
+      - run: npm run test:routines
