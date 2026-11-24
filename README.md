@@ -182,20 +182,20 @@ La forma de ejecutar estos comandos depende de la opción elegida:
 | `npm run db:setup` | En el primer arranque. Ejecuta migraciones y luego seeders; es el comando habitual para preparar la base. |
 | `npm test` | Para verificar cambios. Compila el proyecto y ejecuta las 33 pruebas unitarias y HTTP. No necesita base de datos. |
 | `npm run test:unit` / `npm run test:http` | Para ejecutar solo las pruebas unitarias (16) o solo las HTTP (17). |
-| `npm run test:migrations`, `test:auth`, `test:workouts`, `test:metrics` | Pruebas de integración con PostgreSQL real. Requieren una base de prueba descartable: ver [docs/testing.md](docs/testing.md#3-pruebas-de-integración-con-postgresql). |
+| `npm run test:migrations`, `test:auth`, `test:workouts`, `test:metrics`, `test:routines` | Pruebas de integración con PostgreSQL real. Requieren una base de prueba descartable: ver [docs/testing.md](docs/testing.md#3-pruebas-de-integración-con-postgresql). |
 
 Los comandos `npm` y `docker compose` son iguales en Linux, macOS y PowerShell. Las diferencias necesarias ya están indicadas en las opciones de arranque: `cp` en Linux/macOS, `Copy-Item` en PowerShell y el acceso a PostgreSQL como administrador en la opción 3.
 
 ## Pruebas
 
-El backend tiene 64 pruebas automatizadas con Jest y Supertest:
+El backend tiene 68 pruebas automatizadas con Jest y Supertest:
 
 | Grupo | Pruebas | Qué comprueban | Comando |
 | --- | ---: | --- | --- |
 | Unitarias | 16 | Cálculos de fuerza y running, y selección de la estrategia de métricas. | `npm run test:unit` |
 | HTTP | 17 | Healthchecks, rutas inexistentes, autenticación requerida y validaciones. | `npm run test:http` |
 | Migraciones | 20 | Migraciones de running, restricciones SQL, conservación de datos y reversión. | `npm run test:migrations` |
-| Integración | 11 | Autenticación, entrenamientos y métricas sobre PostgreSQL real: persistencia, permisos entre usuarios y atomicidad. | `npm run test:auth`, `test:workouts`, `test:metrics` |
+| Integración | 15 | Autenticación, entrenamientos, métricas y rutinas sobre PostgreSQL real: persistencia, permisos entre usuarios y atomicidad. | `npm run test:auth`, `test:workouts`, `test:metrics`, `test:routines` |
 
 Verificación rápida, sin base de datos:
 
