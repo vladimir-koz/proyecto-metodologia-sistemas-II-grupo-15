@@ -14,7 +14,8 @@ Herramientas: **Jest** (ejecución y aserciones), **Supertest** (peticiones HTTP
 | Integración de autenticación | `backend/functional-integration/auth.test.js` | 4 | `npm run test:auth` | Sí |
 | Integración de entrenamientos | `backend/functional-integration/workouts.test.js` | 4 | `npm run test:workouts` | Sí |
 | Integración de métricas | `backend/functional-integration/metrics.test.js` | 3 | `npm run test:metrics` | Sí |
-| **Total** | 9 archivos | **64** | | |
+| Integración de rutinas | `backend/functional-integration/routines.test.js` | 4 | `npm run test:routines` | Sí |
+| **Total** | 10 archivos | **68** | | |
 
 `npm test` ejecuta juntas las unitarias y las HTTP (33 pruebas). Las suites con PostgreSQL tienen comandos propios porque requieren una base de prueba preparada (sección 3).
 
@@ -51,9 +52,9 @@ Las líneas como `POST /api/auth/register 400 67.994 ms` que aparecen durante la
 
 Estas suites crean tablas, insertan datos y los borran. Para que nunca toquen la base de desarrollo, **se niegan a ejecutarse** si la conexión no cumple todas estas condiciones:
 
-- La URL apunta a `localhost`, `127.0.0.1` o `[::1]`, con puerto explícito.
-- El nombre de la base y el usuario son exactamente los esperados por cada suite.
-- El servidor es PostgreSQL 17 (solo en las suites de `functional-integration/`).
+- La URL apunta a `localhost`, `127.0.0.1` o `[::1]` y el nombre de la base es el esperado por cada suite.
+- Las suites de `functional-integration/` exigen además puerto explícito y el usuario esperado; la suite de migraciones no comprueba esos dos campos.
+- Entrenamientos, métricas y rutinas comprueban que el servidor sea PostgreSQL 17. Autenticación no verifica su versión, aunque el entorno documentado y CI usan PostgreSQL 17.
 - No se lee el `.env` del proyecto.
 
 Además, cada suite de `functional-integration/` trabaja en un esquema con nombre aleatorio (`integration_test_<uuid>`) que se crea al empezar y se elimina al terminar. La suite de migraciones verifica antes de empezar que la base no contenga las tablas que va a crear, para no modificar ni borrar objetos existentes.
@@ -87,7 +88,7 @@ Windows PowerShell:
 Get-Content backend/integration/setup-test-databases.sql | docker exec -i powerup-test-db psql -U postgres -v ON_ERROR_STOP=1
 ```
 
-Debe mostrar cuatro `CREATE ROLE` y cuatro `CREATE DATABASE`.
+Debe mostrar cinco `CREATE ROLE` y cinco `CREATE DATABASE`.
 
 ### Paso 3 — Definir las variables de conexión
 
@@ -97,8 +98,9 @@ Debe mostrar cuatro `CREATE ROLE` y cuatro `CREATE DATABASE`.
 | `AUTH_TEST_DATABASE_URL` | Autenticación | `powerup_auth_integration_test` | `powerup_auth_test` |
 | `WORKOUTS_TEST_DATABASE_URL` | Entrenamientos | `powerup_workouts_integration_test` | `powerup_workouts_test` |
 | `METRICS_TEST_DATABASE_URL` | Métricas | `powerup_metrics_integration_test` | `powerup_metrics_test` |
+| `ROUTINES_TEST_DATABASE_URL` | Rutinas | `powerup_routines_integration_test` | `powerup_routines_test` |
 
-La contraseña de los cuatro usuarios es `powerup_test`, solamente para este entorno local.
+La contraseña de los cinco usuarios es `powerup_test`, solamente para este entorno local.
 
 Linux, macOS o Git Bash (en la misma terminal donde se ejecutarán las pruebas):
 
@@ -108,6 +110,7 @@ export TEST_DATABASE_URL=postgres://powerup_migration_test:powerup_test@localhos
 export AUTH_TEST_DATABASE_URL=postgres://powerup_auth_test:powerup_test@localhost:55432/powerup_auth_integration_test
 export WORKOUTS_TEST_DATABASE_URL=postgres://powerup_workouts_test:powerup_test@localhost:55432/powerup_workouts_integration_test
 export METRICS_TEST_DATABASE_URL=postgres://powerup_metrics_test:powerup_test@localhost:55432/powerup_metrics_integration_test
+export ROUTINES_TEST_DATABASE_URL=postgres://powerup_routines_test:powerup_test@localhost:55432/powerup_routines_integration_test
 ```
 
 Windows PowerShell:
@@ -118,6 +121,7 @@ $env:TEST_DATABASE_URL = "postgres://powerup_migration_test:powerup_test@localho
 $env:AUTH_TEST_DATABASE_URL = "postgres://powerup_auth_test:powerup_test@localhost:55432/powerup_auth_integration_test"
 $env:WORKOUTS_TEST_DATABASE_URL = "postgres://powerup_workouts_test:powerup_test@localhost:55432/powerup_workouts_integration_test"
 $env:METRICS_TEST_DATABASE_URL = "postgres://powerup_metrics_test:powerup_test@localhost:55432/powerup_metrics_integration_test"
+$env:ROUTINES_TEST_DATABASE_URL = "postgres://powerup_routines_test:powerup_test@localhost:55432/powerup_routines_integration_test"
 ```
 
 ### Paso 4 — Ejecutar
@@ -127,6 +131,7 @@ npm run test:migrations
 npm run test:auth
 npm run test:workouts
 npm run test:metrics
+npm run test:routines
 ```
 
 Cada suite puede ejecutarse sola y repetirse: los datos de una ejecución no quedan para la siguiente.
@@ -184,7 +189,7 @@ Ejecutan las migraciones de running directamente sobre PostgreSQL, sin cargar la
 | Actualización inválida de running → registro intacto | Error | La restricción también protege los `UPDATE`. |
 | Datos incompatibles impiden agregar las restricciones; tras corregirlos se puede reintentar | Error | La migración de restricciones no deja la base a medias. |
 
-### Integración funcional (11) — `functional-integration/`
+### Integración funcional (15) — `functional-integration/`
 
 Recorren la aplicación completa: HTTP → validadores → controladores → servicios → repositorios → Sequelize → PostgreSQL. Además de la respuesta HTTP, consultan la base para comprobar el estado guardado.
 
@@ -201,6 +206,10 @@ Recorren la aplicación completa: HTTP → validadores → controladores → ser
 | Métricas | Resumen de fuerza | Normal | Cálculos sobre registros reales. |
 | Métricas | Resumen y progreso de running | Normal | Ritmo agregado ponderado (10 km en 4200 s → 420 s/km, no 375) y progreso en orden cronológico. |
 | Métricas | Dos usuarios, dos modalidades y rango de fechas | Límite y error | No se mezclan usuarios ni modalidades, y el rango excluye los registros fuera de los extremos. |
+| Rutinas | Alta de rutina, asociación de ejercicio y consultas | Normal | Persisten la rutina y su relación con el ejercicio; se recuperan mediante HTTP. |
+| Rutinas | Edición de una asociación | Normal | Repeticiones y peso actualizados quedan guardados en PostgreSQL. |
+| Rutinas | Otro usuario intenta editar o borrar rutina y asociación | Error | Recibe `404` y los registros originales permanecen intactos. |
+| Rutinas | Actualización de campos nullable | Normal y límite | `null` borra los cuatro campos de texto opcionales; los omitidos conservan su valor y los strings se recortan. Se comprueban respuestas HTTP y persistencia real. |
 
 ## 5. Cómo interpretar los resultados
 
@@ -215,6 +224,7 @@ Recorren la aplicación completa: HTTP → validadores → controladores → ser
 | Fecha | Commit base | Entorno | Resultado |
 | --- | --- | --- | --- |
 | 23/11/2026 | `d5ed072` (dev) | Windows 11, Node.js 24.21, PostgreSQL 17 en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · **64/64** |
+| 24/11/2026 | `f649b16` + cambios locales de esta intervención | Linux, Node.js 24.13.0, PostgreSQL 17.9 descartable en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · **68/68** |
 
 ## 6. Decisiones sobre las pruebas
 
@@ -226,11 +236,12 @@ Recorren la aplicación completa: HTTP → validadores → controladores → ser
 
 ## 7. Limitaciones y qué no se prueba
 
-- **Rutinas** (`workout-templates`, `workout-template-exercises`), **planificación** (`training-programs`, `program-weeks`, `scheduled-workouts`), **ejercicios** y **grupos musculares** solo tienen pruebas HTTP de validación (`400`). No tienen pruebas de integración con la base, de modo que permisos, relaciones y eliminaciones en cascada no están verificados automáticamente.
+- **La suite de rutinas** tiene cuatro pruebas de integración para alta, relaciones, edición, campos nullable y rechazo de modificaciones ajenas. No se comprueban la eliminación exitosa, las cascadas ni todos los casos de lectura y validación.
+- **Planificación**, **ejercicios** y **grupos musculares** no tienen suites de integración incorporadas en esta rama. Las pruebas HTTP existentes cubren algunas validaciones, pero no verifican exhaustivamente sus permisos, relaciones ni eliminaciones en cascada.
 - `GET /api/metrics/activity-heatmap` y `GET /api/metrics/exercise-progress` no tienen pruebas de integración con datos reales. El calendario se verifica en las pruebas unitarias de las estrategias. El progreso por ejercicio y la fórmula de 1RM (Epley) solo tienen pruebas de validación HTTP.
 - No se prueban el token vencido ni el formato de token incorrecto. Sí se prueba la ausencia de token.
 - Los seeders y el arranque con Docker Compose no se verifican con pruebas automatizadas, sino siguiendo el README.
-- La integración continua (sección 8) todavía no se ejecutó en GitHub. Las suites con PostgreSQL se ejecutaron manualmente con el procedimiento de la sección 3.
+- Las dos ejecuciones de GitHub Actions correspondientes a la PR #17 y a su integración en `dev` fueron exitosas. La incorporación de rutinas al workflow todavía debe verificarse en GitHub al publicar esta rama; las ejecuciones anteriores no validan este cambio nuevo.
 - No se mide cobertura. La consigna no la exige y preferimos elegir casos por riesgo.
 
 ## 8. Integración continua
@@ -238,6 +249,6 @@ Recorren la aplicación completa: HTTP → validadores → controladores → ser
 El workflow [`.github/workflows/tests.yml`](../.github/workflows/tests.yml) automatiza en GitHub Actions las mismas verificaciones de este documento, en cada `push` y `pull request` hacia `dev` o `main`:
 
 1. **Compilación y pruebas sin base:** `npm ci` y `npm test`.
-2. **Integración con PostgreSQL:** levanta un servicio `postgres:17-alpine`, ejecuta `setup-test-databases.sql`, define las cuatro variables de la sección 3 (con el puerto `5432` del servicio) y corre las cuatro suites.
+2. **Integración con PostgreSQL:** levanta un servicio `postgres:17-alpine`, ejecuta `setup-test-databases.sql`, define las cinco variables de la sección 3 (con el puerto `5432` del servicio) y corre las cinco suites, incluida la de rutinas.
 
 Es una mejora opcional: la consigna no exige CI. Sirve para detectar regresiones antes de integrar una rama, sin depender de que alguien recuerde ejecutar las suites a mano. No incluye despliegue.
