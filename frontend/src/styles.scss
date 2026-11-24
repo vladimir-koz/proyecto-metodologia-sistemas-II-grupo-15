@@ -1,0 +1,28 @@
+// Colores de PowerUp: se definen antes de importar Bootstrap.
+$primary: #1f3b73;
+$secondary: #5b6b8c;
+$success: #2f7d4f;
+$warning: #e0a526;
+$danger: #b23a3a;
+$body-bg: #f4f6fa;
+$border-radius: 0.6rem;
+
+@import 'bootstrap/scss/bootstrap';
+
+.indicador {
+  background-color: $white;
+}
+
+// El panel de peticiones se lee como una consola: ancho fijo para el método.
+.peticiones {
+  max-height: 22rem;
+  overflow-y: auto;
+
+  .metodo {
+    min-width: 3.5rem;
+  }
+}
+
+.guia summary {
+  cursor: pointer;
+}
