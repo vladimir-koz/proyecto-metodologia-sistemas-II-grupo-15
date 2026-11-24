@@ -232,6 +232,7 @@ Recorren la aplicación completa: HTTP → validadores → controladores → ser
 - Los seeders y el arranque con Docker Compose no se verifican con pruebas automatizadas, sino siguiendo el README.
 - La integración continua (sección 8) todavía no se ejecutó en GitHub. Las suites con PostgreSQL se ejecutaron manualmente con el procedimiento de la sección 3.
 - No se mide cobertura. La consigna no la exige y preferimos elegir casos por riesgo.
+- El **frontend de demostración** solo tiene 13 pruebas unitarias (Vitest) de las conversiones de duración (`30:00` ↔ `1800` s) y ritmo (`390` s/km → `6:30 min/km`), en [`frontend/src/dominio/formato.test.ts`](../frontend/src/dominio/formato.test.ts). No tiene pruebas de componentes ni de punta a punta. Es una herramienta para mostrar el flujo: las reglas de negocio y los cálculos que muestra están en la API y se prueban allí.
 
 ## 8. Integración continua
 
@@ -239,5 +240,6 @@ El workflow [`.github/workflows/tests.yml`](../.github/workflows/tests.yml) auto
 
 1. **Compilación y pruebas sin base:** `npm ci` y `npm test`.
 2. **Integración con PostgreSQL:** levanta un servicio `postgres:17-alpine`, ejecuta `setup-test-databases.sql`, define las cuatro variables de la sección 3 (con el puerto `5432` del servicio) y corre las cuatro suites.
+3. **Frontend:** `npm ci`, pruebas unitarias (`npm test`) y compilación con verificación de tipos (`npm run build`).
 
 Es una mejora opcional: la consigna no exige CI. Sirve para detectar regresiones antes de integrar una rama, sin depender de que alguien recuerde ejecutar las suites a mano. No incluye despliegue.

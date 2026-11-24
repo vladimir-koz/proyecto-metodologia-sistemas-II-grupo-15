@@ -7,6 +7,8 @@ PowerUp es una API REST para registrar y analizar entrenamientos. Permite gestio
 
 Las métricas (resumen, calendario de actividad y progreso) se calculan por separado para cada modalidad mediante el patrón Strategy.
 
+Incluye un **frontend de demostración** de una sola página (React) para recorrer el flujo principal sin Postman: ingreso, registro y edición de entrenamientos de fuerza y running, y consulta de métricas. Ver [Frontend de demostración](#frontend-de-demostración).
+
 Proyecto de Metodología de Sistemas II, desarrollado con Node.js 24, TypeScript, Express, Sequelize y PostgreSQL 17.
 
 ## Documentación
@@ -18,6 +20,7 @@ Proyecto de Metodología de Sistemas II, desarrollado con Node.js 24, TypeScript
 | [requests.http](requests.http) | Colección de peticiones de ejemplo para la extensión REST Client de VS Code. |
 | [docs/testing.md](docs/testing.md) | Pruebas automatizadas: qué verifican, cómo ejecutarlas, cómo interpretar los resultados y sus limitaciones. |
 | [docs/decisiones-diseno.md](docs/decisiones-diseno.md) | Decisiones de diseño y refactoring de los Talleres II y III, incluido el uso de Strategy. |
+| [frontend/README.md](frontend/README.md) | Frontend de demostración: tecnologías, estructura y comandos. |
 
 ## Cómo levantar el proyecto
 
@@ -44,6 +47,8 @@ curl http://localhost:3001/api/health
 ```
 
 En Windows PowerShell, utilizar `curl.exe` en el último comando.
+
+El frontend de demostración queda disponible en http://localhost:8080.
 
 Para detener todo sin borrar la base:
 
@@ -135,6 +140,7 @@ Para detener la API, presionar `Ctrl+C`. PostgreSQL se detiene desde el administ
 
 - API: http://localhost:3001/api
 - Healthcheck: http://localhost:3001/api/health
+- Frontend de demostración: http://localhost:8080 en la opción 1; http://localhost:5173 en las opciones 2 y 3 (ver la sección siguiente).
 - PostgreSQL: `localhost:5432`
 - pgAdmin, solamente en las opciones 1 y 2: http://localhost:5050
 
@@ -149,6 +155,34 @@ Credenciales locales:
 | PostgreSQL | `app_user` | `app_password` |
 
 En pgAdmin conectar al host `database`, puerto `5432` y base `app_database`. Estas credenciales son únicamente para desarrollo local.
+
+## Frontend de demostración
+
+Es una aplicación React de una sola página que consume la API. Sirve para mostrar el flujo principal en la presentación, en lugar de usar Postman o `requests.http`. No agrega reglas de negocio: todas las validaciones y los cálculos (ritmo, velocidad, métricas) los hace la API, y el frontend muestra sus respuestas, incluidos los errores `400`.
+
+**Opción 1 (Docker):** se levanta con `docker compose up -d --build` en http://localhost:8080. Nginx sirve la aplicación compilada y reenvía `/api` al servicio `backend`.
+
+**Opciones 2 y 3 (Node.js local):** con la API ejecutándose en el puerto 3001, abrir otra terminal desde la raíz del repositorio:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Abrir http://localhost:5173. Vite reenvía `/api` a `http://localhost:3001`.
+
+Recorrido para la presentación (también aparece en la propia página, en *Recorrido sugerido*):
+
+1. Ingresar con la cuenta demo (los datos ya están completos).
+2. Registrar un entrenamiento de fuerza con series.
+3. Registrar una carrera de 5 km en `30:00`: la lista muestra 6:00 min/km y 10 km/h, calculados por la API.
+4. Editar la carrera a `25:00`: pasa a 5:00 min/km y 12 km/h. La modalidad queda bloqueada al editar.
+5. Enviar distancia `0` o una serie con `0` repeticiones: la API responde `400` y se muestra el campo inválido.
+6. Ver las métricas de fuerza y de running por separado y filtrarlas por fechas.
+7. Cerrar sesión y registrar otro usuario: no ve los entrenamientos del primero.
+
+El panel **Peticiones HTTP** muestra el método, la ruta, el código de respuesta y el tiempo de cada petición, para relacionar cada acción de la interfaz con el endpoint que ejecuta.
 
 ## Configuración reproducible
 
@@ -208,7 +242,9 @@ En la opción 1 (todo con Docker): `docker compose exec backend npm test`. El re
 
 Las suites de migraciones e integración usan un PostgreSQL 17 descartable, separado de la base de desarrollo. [docs/testing.md](docs/testing.md) explica cómo prepararlo, qué casos se eligieron y por qué, y qué queda sin probar.
 
-En GitHub, el workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) ejecuta las mismas pruebas en cada push y pull request hacia `dev` o `main`.
+El frontend tiene 13 pruebas unitarias (Vitest) de las conversiones de duración y ritmo: `cd frontend && npm test`.
+
+En GitHub, el workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) ejecuta las mismas pruebas, y compila el frontend, en cada push y pull request hacia `dev` o `main`.
 
 ## Organización
 
@@ -221,13 +257,14 @@ El flujo principal es `routes → validators/middlewares → controllers → ser
 | `backend/seeders` | Datos demo. |
 | `backend/tests/unit`, `backend/tests/http` | Pruebas que no necesitan base de datos (`npm test`). |
 | `backend/integration`, `backend/functional-integration` | Pruebas con PostgreSQL real y el script que prepara sus bases. |
+| `frontend/` | Frontend de demostración (React, Vite y Bootstrap), con su propio `package.json`. |
 | `docs/` | Documentación técnica (ver [Documentación](#documentación)). |
 
 ## Problemas frecuentes
 
 ### Puerto ocupado
 
-Los puertos utilizados son 3001, 5432 y 5050. Ver contenedores que ya los estén usando:
+Los puertos utilizados son 3001, 5432, 5050 y 8080 (más 5173 si se ejecuta el frontend con Vite). Ver contenedores que ya los estén usando:
 
 ```bash
 docker ps --format "table {{.Names}}\t{{.Ports}}"
@@ -237,7 +274,7 @@ En Windows PowerShell:
 
 ```powershell
 Get-NetTCPConnection -State Listen |
-  Where-Object { $_.LocalPort -in 3001, 5432, 5050 }
+  Where-Object { $_.LocalPort -in 3001, 5432, 5050, 8080, 5173 }
 ```
 
 Detener solamente el proceso o contenedor conocido que provoca el conflicto.
