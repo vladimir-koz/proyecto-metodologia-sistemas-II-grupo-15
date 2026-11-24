@@ -1,6 +1,23 @@
-# API de entrenamientos
+# PowerUp — API de entrenamientos de fuerza y running
 
-API REST para gestionar ejercicios, rutinas, planes semanales y entrenamientos. Proyecto de Metodología de Sistemas II desarrollado con Node.js, TypeScript, Express, Sequelize y PostgreSQL.
+PowerUp es una API REST para registrar y analizar entrenamientos. Permite gestionar ejercicios, grupos musculares, rutinas y programas semanales, y registrar dos modalidades de entrenamiento:
+
+- **Fuerza:** series con repeticiones, peso, RIR y RPE. Puede vincularse a una rutina o a una sesión programada.
+- **Running libre:** distancia en kilómetros y duración en segundos. La API calcula ritmo (segundos/km) y velocidad (km/h).
+
+Las métricas (resumen, calendario de actividad y progreso) se calculan por separado para cada modalidad mediante el patrón Strategy.
+
+Proyecto de Metodología de Sistemas II, desarrollado con Node.js 24, TypeScript, Express, Sequelize y PostgreSQL 17.
+
+## Documentación
+
+| Documento | Contenido |
+| --- | --- |
+| Este README | Instalación, configuración, ejecución y comandos. |
+| [docs/API.md](docs/API.md) | Contrato de todos los endpoints: campos, validaciones, respuestas y errores. |
+| [requests.http](requests.http) | Colección de peticiones de ejemplo para la extensión REST Client de VS Code. |
+| [docs/testing.md](docs/testing.md) | Pruebas automatizadas: qué verifican, cómo ejecutarlas, cómo interpretar los resultados y sus limitaciones. |
+| [docs/decisiones-diseno.md](docs/decisiones-diseno.md) | Decisiones de diseño y refactoring de los Talleres II y III, incluido el uso de Strategy. |
 
 ## Cómo levantar el proyecto
 
@@ -163,20 +180,48 @@ La forma de ejecutar estos comandos depende de la opción elegida:
 | `npm run migrate` | Cuando solamente se necesita crear o actualizar las tablas de PostgreSQL. No carga datos demo. |
 | `npm run seed` | Cuando las tablas ya existen y solamente se necesitan los datos demo. |
 | `npm run db:setup` | En el primer arranque. Ejecuta migraciones y luego seeders; es el comando habitual para preparar la base. |
-| `npm test` | Para verificar cambios. Primero compila el proyecto y después ejecuta las 15 pruebas smoke. |
+| `npm test` | Para verificar cambios. Compila el proyecto y ejecuta las 33 pruebas unitarias y HTTP. No necesita base de datos. |
+| `npm run test:unit` / `npm run test:http` | Para ejecutar solo las pruebas unitarias (16) o solo las HTTP (17). |
+| `npm run test:migrations`, `test:auth`, `test:workouts`, `test:metrics` | Pruebas de integración con PostgreSQL real. Requieren una base de prueba descartable: ver [docs/testing.md](docs/testing.md#3-pruebas-de-integración-con-postgresql). |
 
 Los comandos `npm` y `docker compose` son iguales en Linux, macOS y PowerShell. Las diferencias necesarias ya están indicadas en las opciones de arranque: `cp` en Linux/macOS, `Copy-Item` en PowerShell y el acceso a PostgreSQL como administrador en la opción 3.
 
-Hay 15 pruebas smoke de HTTP, autenticación y validaciones; no prueban PostgreSQL ni toda la lógica de negocio.
+## Pruebas
+
+El backend tiene 64 pruebas automatizadas con Jest y Supertest:
+
+| Grupo | Pruebas | Qué comprueban | Comando |
+| --- | ---: | --- | --- |
+| Unitarias | 16 | Cálculos de fuerza y running, y selección de la estrategia de métricas. | `npm run test:unit` |
+| HTTP | 17 | Healthchecks, rutas inexistentes, autenticación requerida y validaciones. | `npm run test:http` |
+| Migraciones | 20 | Migraciones de running, restricciones SQL, conservación de datos y reversión. | `npm run test:migrations` |
+| Integración | 11 | Autenticación, entrenamientos y métricas sobre PostgreSQL real: persistencia, permisos entre usuarios y atomicidad. | `npm run test:auth`, `test:workouts`, `test:metrics` |
+
+Verificación rápida, sin base de datos:
+
+```bash
+cd backend
+npm test
+```
+
+En la opción 1 (todo con Docker): `docker compose exec backend npm test`. El resultado esperado es `Tests: 33 passed, 33 total`.
+
+Las suites de migraciones e integración usan un PostgreSQL 17 descartable, separado de la base de desarrollo. [docs/testing.md](docs/testing.md) explica cómo prepararlo, qué casos se eligieron y por qué, y qué queda sin probar.
+
+En GitHub, el workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) ejecuta las mismas pruebas en cada push y pull request hacia `dev` o `main`.
 
 ## Organización
 
-`backend/src` contiene la API; `backend/migrations` el esquema; `backend/seeders` los datos demo; y `backend/tests` las pruebas. El flujo principal es `routes → validators/middlewares → controllers → services → repositories → Sequelize → PostgreSQL`.
+El flujo principal es `routes → validators/middlewares → controllers → services → repositories → Sequelize → PostgreSQL`.
 
-## Documentación de la API
-
-- [Contrato técnico de endpoints](docs/API.md)
-- [Colección de peticiones para REST Client](requests.http)
+| Ruta | Contenido |
+| --- | --- |
+| `backend/src` | Código de la API. Las estrategias de métricas por modalidad están en `services/strategies/`. |
+| `backend/migrations` | Esquema de la base, incluida la incorporación de running y sus restricciones. |
+| `backend/seeders` | Datos demo. |
+| `backend/tests/unit`, `backend/tests/http` | Pruebas que no necesitan base de datos (`npm test`). |
+| `backend/integration`, `backend/functional-integration` | Pruebas con PostgreSQL real y el script que prepara sus bases. |
+| `docs/` | Documentación técnica (ver [Documentación](#documentación)). |
 
 ## Problemas frecuentes
 

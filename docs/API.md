@@ -1,6 +1,6 @@
 # Documentacion tecnica de la API REST
 
-Referencia del contrato HTTP implementado por el backend de entrenamientos. La informacion de este documento surge de las rutas, validadores, servicios, modelos y migraciones vigentes al 11 de septiembre de 2026.
+Referencia del contrato HTTP implementado por el backend de PowerUp. La informacion de este documento surge de las rutas, validadores, servicios, modelos y migraciones vigentes al 23 de noviembre de 2026, e incluye la modalidad running incorporada en el Taller III.
 
 ## 1. Informacion general
 
@@ -37,6 +37,8 @@ Los ejercicios, grupos musculares, plantillas y programas con `userId: null` son
 - Los listados no estan paginados.
 - Los nombres obligatorios se recortan y deben tener al menos 2 caracteres.
 - En `PUT` solo se modifican los campos enviados. En `PUT /workouts/:id`, si se envia `series`, la coleccion completa anterior se reemplaza.
+- Los entrenamientos realizados tienen una `modalidad`: `fuerza` o `running`. Si se omite, se asume `fuerza`, tanto al crear como al consultar listados y metricas. Ver la seccion 15.
+- Unidades de running: distancia en kilometros (`distanciaKm`), duracion en segundos (`duracionSegundos`), ritmo en segundos por kilometro y velocidad en km/h. Un ritmo de 6:30 min/km equivale a `390` s/km, no a `6.30`.
 
 ### Errores
 
@@ -145,12 +147,19 @@ Campos: `id`, `programWeekId`, `workoutTemplateId`, `nombre`, `diaSemana`, `fech
 
 ### Workout y WorkoutSet
 
+Campos comunes: `id`, `timestamp`, `nombre`, `userId`, `modalidad`, `distanciaKm`, `duracionSegundos`, `grupoMuscularEtiqueta`, `workoutTemplateId`, `scheduledWorkoutId`, `createdAt`, `updatedAt`, `series`, `workoutTemplate` y `scheduledWorkout`.
+
+Entrenamiento de fuerza (`distanciaKm` y `duracionSegundos` son siempre `null`):
+
 ```json
 {
   "id": 15,
   "timestamp": "2026-09-15T18:30:00.000Z",
   "nombre": "Sesion de piernas",
   "userId": 1,
+  "modalidad": "fuerza",
+  "distanciaKm": null,
+  "duracionSegundos": null,
   "grupoMuscularEtiqueta": "Piernas",
   "workoutTemplateId": 3,
   "scheduledWorkoutId": 10,
@@ -170,6 +179,30 @@ Campos: `id`, `programWeekId`, `workoutTemplateId`, `nombre`, `diaSemana`, `fech
   "scheduledWorkout": {}
 }
 ```
+
+Entrenamiento de running. No tiene series, plantilla ni entrenamiento programado. La respuesta agrega `ritmoSegundosPorKm` y `velocidadKmH`, que se calculan al consultar y no se guardan en la base:
+
+```json
+{
+  "id": 16,
+  "timestamp": "2026-09-16T07:00:00.000Z",
+  "nombre": "Carrera libre",
+  "userId": 1,
+  "modalidad": "running",
+  "distanciaKm": 5,
+  "duracionSegundos": 1800,
+  "grupoMuscularEtiqueta": null,
+  "workoutTemplateId": null,
+  "scheduledWorkoutId": null,
+  "series": [],
+  "workoutTemplate": null,
+  "scheduledWorkout": null,
+  "ritmoSegundosPorKm": 360,
+  "velocidadKmH": 10
+}
+```
+
+`ritmoSegundosPorKm = duracionSegundos / distanciaKm` y `velocidadKmH = distanciaKm / (duracionSegundos / 3600)`, redondeados a dos decimales. En el ejemplo, 5 km en 1800 s (00:30:00) equivalen a 6:00 min/km y 10 km/h.
 
 ## 5. Resumen de endpoints
 
@@ -194,11 +227,12 @@ Campos: `id`, `programWeekId`, `workoutTemplateId`, `nombre`, `diaSemana`, `fech
 | GET, PUT, DELETE | `/api/program-weeks/:id` | Si | `200` |
 | GET, POST | `/api/scheduled-workouts` | Si | `200` listado / `201` alta |
 | GET, PUT, DELETE | `/api/scheduled-workouts/:id` | Si | `200` |
-| GET, POST | `/api/workouts` | Si | `200` listado / `201` alta |
+| GET, POST | `/api/workouts` | Si | `200` listado (filtro `modalidad`) / `201` alta |
 | GET, PUT, DELETE | `/api/workouts/:id` | Si | `200` / DELETE `204` |
-| GET | `/api/metrics/summary` | Si | `200` resumen |
-| GET | `/api/metrics/activity-heatmap` | Si | `200` actividad diaria |
-| GET | `/api/metrics/exercise-progress` | Si | `200` progreso |
+| GET | `/api/metrics/summary` | Si | `200` resumen por modalidad |
+| GET | `/api/metrics/activity-heatmap` | Si | `200` actividad diaria por modalidad |
+| GET | `/api/metrics/exercise-progress` | Si | `200` progreso de un ejercicio de fuerza |
+| GET | `/api/metrics/running-progress` | Si | `200` progreso de las carreras |
 
 ## 6. Healthchecks
 
@@ -470,39 +504,93 @@ Respuesta `200`: `{ "message": "Entrenamiento programado eliminado exitosamente"
 
 ## 15. Entrenamientos realizados (`/api/workouts`)
 
+Cada entrenamiento tiene una sola modalidad:
+
+- **`fuerza`** (por defecto): series de ejercicios; puede vincularse a una plantilla o a un entrenamiento programado.
+- **`running`**: carrera libre con distancia y duracion. No admite series, plantilla ni entrenamiento programado; la planificacion de running no forma parte del alcance actual.
+
+Una actividad mixta se registra como dos entrenamientos separados.
+
 ### `GET /workouts`
+
+Query opcional: `modalidad` (`fuerza` o `running`). **Sin `modalidad` devuelve solo entrenamientos de fuerza**, para conservar el comportamiento anterior a running. Para obtener carreras se usa `GET /workouts?modalidad=running`. No hay un listado conjunto de ambas modalidades.
 
 Devuelve solo los entrenamientos del usuario, en orden descendente por `timestamp`.
 
-Respuesta `200`: `{ "workouts": Workout[] }`. Cada elemento incluye `series` con su `exercise`, `workoutTemplate` y `scheduledWorkout` (este ultimo incluye su plantilla).
+Respuesta `200`: `{ "workouts": Workout[] }`. Cada elemento incluye `series` con su `exercise`, `workoutTemplate` y `scheduledWorkout` (este ultimo incluye su plantilla). Los de running incluyen ademas `ritmoSegundosPorKm` y `velocidadKmH`.
+
+Una `modalidad` distinta de `fuerza` o `running` responde `400`.
 
 ### `GET /workouts/:id`
 
-Respuesta `200`: `{ "workout": Workout }` o `404` si no pertenece al usuario.
+Devuelve el entrenamiento de cualquier modalidad. Respuesta `200`: `{ "workout": Workout }` o `404` si no existe o no pertenece al usuario.
 
 ### `POST /workouts`
 
 | Campo | Tipo | Obligatorio | Regla |
 | --- | --- | --- | --- |
 | `nombre` | string | Si | Minimo 2 caracteres |
+| `modalidad` | string | No | `fuerza` (por defecto) o `running` |
 | `timestamp` | string | No | Fecha-hora ISO 8601; por defecto, fecha actual |
 | `grupoMuscularEtiqueta` | string/null | No | Texto libre |
-| `workoutTemplateId` | integer/null | No | Plantilla visible |
-| `scheduledWorkoutId` | integer/null | No | Entrenamiento programado visible |
-| `series` | array | No | Por defecto `[]` |
+| `distanciaKm` | number/null | Solo running | Numero finito mayor que 0, en km |
+| `duracionSegundos` | integer/null | Solo running | Entero entre `1` y `2147483647`, en segundos |
+| `workoutTemplateId` | integer/null | No (solo fuerza) | Plantilla visible |
+| `scheduledWorkoutId` | integer/null | No (solo fuerza) | Entrenamiento programado visible |
+| `series` | array | No | Por defecto `[]`; en running debe omitirse o estar vacio |
 | `series[].exerciseId` | integer | Si, por serie | Ejercicio visible |
 | `series[].repeticiones` | integer | Si, por serie | Mayor o igual a 1 |
 | `series[].peso` | number | Si, por serie | Mayor o igual a 0 |
 | `series[].rir` | integer/null | No | Entre 0 y 10 |
 | `series[].rpe` | number/null | No | Entre 1 y 10 |
 
-Si se envia `scheduledWorkoutId`, la API toma de alli el `workoutTemplateId`. Si tambien se envia este ultimo, ambos deben coincidir.
+Reglas de fuerza:
+
+- Si se envia `scheduledWorkoutId`, la API toma de alli el `workoutTemplateId`. Si tambien se envia este ultimo, ambos deben coincidir.
+- `distanciaKm` y `duracionSegundos` deben omitirse o enviarse como `null`.
+
+Reglas de running:
+
+- `distanciaKm` y `duracionSegundos` son obligatorios.
+- No se admiten series no vacias, `workoutTemplateId` ni `scheduledWorkoutId`.
+
+Ejemplo de alta de running:
+
+```json
+{
+  "nombre": "Carrera libre",
+  "modalidad": "running",
+  "timestamp": "2026-09-16T07:00:00Z",
+  "distanciaKm": 5,
+  "duracionSegundos": 1800
+}
+```
 
 Respuesta `201`: `{ "workout": Workout }`.
 
+Errores propios de las modalidades (`400 { "error": "..." }`):
+
+| Situacion | Mensaje |
+| --- | --- |
+| Running sin distancia | `distanciaKm es obligatoria para running` |
+| Running sin duracion | `duracionSegundos es obligatoria para running` |
+| Running con series | `Un entrenamiento de running no admite series` |
+| Running con plantilla o sesion programada | `Un entrenamiento de running no admite plantilla ni entrenamiento programado` |
+| Fuerza con distancia o duracion | `distanciaKm y duracionSegundos solo se admiten en running` |
+
+Los valores con formato invalido (por ejemplo `distanciaKm: 0` o `duracionSegundos: 2147483648`) se rechazan antes, con el formato de error de validacion `Datos invalidos` y el campo en `details`.
+
+La base de datos aplica las mismas reglas con restricciones `CHECK` (migracion `20261119000000-add-workout-running-constraints`), por lo que un registro incoherente tampoco puede guardarse sin pasar por la API.
+
 ### `PUT /workouts/:id`
 
-Acepta los mismos campos, todos opcionales. Enviar `series` reemplaza todas las series existentes dentro de una transaccion; omitirlo conserva las actuales. Respuesta `200`: `{ "workout": Workout }`.
+Acepta los mismos campos, todos opcionales. Los campos omitidos conservan su valor; las reglas de la modalidad se validan sobre el resultado final (lo guardado combinado con lo enviado).
+
+- **La modalidad no se puede cambiar.** Enviar una `modalidad` distinta de la actual responde `400 { "error": "La modalidad de un entrenamiento no se puede cambiar" }`. Enviar la misma es valido.
+- En fuerza, enviar `series` reemplaza todas las series existentes dentro de una transaccion; omitirlo conserva las actuales.
+- En running se puede editar, por ejemplo, solo `duracionSegundos`: la respuesta recalcula ritmo y velocidad.
+
+Respuesta `200`: `{ "workout": Workout }`.
 
 ### `DELETE /workouts/:id`
 
@@ -510,11 +598,21 @@ Respuesta `204` sin contenido. Las series se eliminan en cascada.
 
 ## 16. Metricas (`/api/metrics`)
 
-Las tres consultas admiten `from` y `to` opcionales en formato ISO 8601. El rango es inclusivo y `from` no puede ser posterior a `to`.
+Todas las consultas admiten `from` y `to` opcionales en formato ISO 8601. El rango es inclusivo y `from` no puede ser posterior a `to`. Solo se consideran entrenamientos del usuario autenticado.
+
+Las metricas se calculan por modalidad y nunca mezclan fuerza con running:
+
+| Endpoint | Modalidad |
+| --- | --- |
+| `summary`, `activity-heatmap` | Query opcional `modalidad`: `fuerza` (por defecto) o `running`. Cualquier otro valor responde `400`. |
+| `exercise-progress` | Siempre fuerza (series de un ejercicio). |
+| `running-progress` | Siempre running. |
+
+Internamente, el servicio de metricas consulta los entrenamientos autorizados de la modalidad pedida y delega el calculo en la estrategia correspondiente (`StrengthStrategy` o `RunningStrategy`). Ver [decisiones-diseno.md](decisiones-diseno.md).
 
 ### `GET /metrics/summary`
 
-Respuesta `200`:
+Respuesta `200` para fuerza (sin `modalidad` o con `modalidad=fuerza`):
 
 ```json
 {
@@ -538,9 +636,26 @@ Respuesta `200`:
 
 Los promedios de RPE/RIR son `null` cuando no hay valores. El volumen se calcula como la suma de `repeticiones * peso`.
 
+Respuesta `200` para `modalidad=running`:
+
+```json
+{
+  "summary": {
+    "workouts": 2,
+    "totalDistanceKm": 10,
+    "totalDurationSeconds": 4200,
+    "averagePaceSecondsPerKm": 420,
+    "averageSpeedKmH": 8.57,
+    "range": { "from": null, "to": null }
+  }
+}
+```
+
+El ritmo y la velocidad promedio se calculan sobre los totales (`4200 s / 10 km = 420 s/km`), no promediando los ritmos de cada carrera: una carrera de 2 km a 300 s/km y otra de 8 km a 450 s/km dan 420 s/km, no 375. Sin carreras, los totales son `0` y los promedios `null`.
+
 ### `GET /metrics/activity-heatmap`
 
-Respuesta `200`:
+Respuesta `200` para fuerza:
 
 ```json
 {
@@ -557,11 +672,27 @@ Respuesta `200`:
 }
 ```
 
-`intensityLevel` va de 1 a 4 y compara el volumen diario contra el maximo del rango.
+Respuesta `200` para `modalidad=running`:
+
+```json
+{
+  "activity": [
+    {
+      "date": "2026-09-16",
+      "workoutCount": 1,
+      "totalDistanceKm": 5,
+      "totalDurationSeconds": 1800,
+      "intensityLevel": 4
+    }
+  ]
+}
+```
+
+Los dias se agrupan por fecha UTC. `intensityLevel` va de 1 a 4 y compara el volumen diario (fuerza) o la distancia diaria (running) contra el maximo del rango.
 
 ### `GET /metrics/exercise-progress`
 
-Query obligatorio adicional: `exerciseId` (entero positivo y visible).
+Query obligatorio adicional: `exerciseId` (entero positivo y visible). Solo considera entrenamientos de fuerza.
 
 Respuesta `200`:
 
@@ -587,6 +718,39 @@ Respuesta `200`:
 
 La estimacion de una repeticion maxima usa la formula de Epley: `peso * (1 + repeticiones / 30)`.
 
+### `GET /metrics/running-progress`
+
+Query opcional: `from` y `to`. Devuelve cada carrera del usuario en orden cronologico ascendente, con sus medidas y metricas propias.
+
+Respuesta `200`:
+
+```json
+{
+  "progress": [
+    {
+      "date": "2026-11-10T12:00:00.000Z",
+      "workoutId": 21,
+      "workoutName": "Carrera corta",
+      "distanceKm": 2,
+      "durationSeconds": 600,
+      "paceSecondsPerKm": 300,
+      "speedKmH": 12
+    },
+    {
+      "date": "2026-11-12T12:00:00.000Z",
+      "workoutId": 20,
+      "workoutName": "Carrera larga",
+      "distanceKm": 8,
+      "durationSeconds": 3600,
+      "paceSecondsPerKm": 450,
+      "speedKmH": 8
+    }
+  ]
+}
+```
+
+Sin carreras en el rango devuelve `{ "progress": [] }`.
+
 ## 17. Datos iniciales utiles
 
 Al ejecutar `npm run db:setup` se crea la cuenta `demo@powerup.com` con password `Demo1234!`, 10 grupos musculares, 12 ejercicios globales, 3 plantillas globales y el programa global de cuatro semanas `Hipertrofia base 4 semanas`. Los IDs de los datos iniciales comienzan en `1`, pero conviene obtenerlos con los endpoints GET y no asumirlos en clientes reales.
@@ -597,7 +761,8 @@ Al ejecutar `npm run db:setup` se crea la cuenta `demo@powerup.com` con password
 2. Consultar ejercicios y grupos musculares globales, o crear recursos propios.
 3. Crear una plantilla propia y agregarle ejercicios.
 4. Crear un programa propio, sus semanas y entrenamientos programados.
-5. Registrar entrenamientos realizados y sus series.
-6. Consultar resumen, actividad y progreso por ejercicio.
+5. Registrar entrenamientos de fuerza con sus series.
+6. Registrar carreras con `modalidad: "running"`, distancia y duracion.
+7. Consultar resumen, actividad y progreso por ejercicio (fuerza), y resumen, actividad y progreso de running con `modalidad=running` o `running-progress`.
 
 La coleccion [`requests.http`](../requests.http) implementa este flujo y captura automaticamente el token y los IDs creados cuando se ejecuta en orden con la extension REST Client de VS Code.
