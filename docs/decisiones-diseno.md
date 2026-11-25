@@ -1,3 +1,24 @@
+# Análisis de diseño
+[Volver al README](../README.md)
+
+**Índice**
+
+- [Taller II](#taller-ii--análisis-de-una-decisión-de-diseño)
+  - [1. Que parte del código analizamos](#1-que-parte-del-código-analizamos)
+  - [2. Que problema encontramos](#2-que-problema-encontramos)
+  - [3. Que opciones consideramos](#3-que-opciones-consideramos)
+  - [4. Que decidimos por ahora](#4-que-decidimos-por-ahora)
+  - [5. Evidencia, beneficios y costos](#5-evidencia-beneficios-y-costos)
+  - [Tambien pensamos en Adapter y Strategy para el futuro](#tambien-pensamos-en-adapter-y-strategy-para-el-futuro)
+- [Taller III](#taller-iii--de-una-formula-a-strategy-por-modalidad)
+  - [1. Que cambio en el proyecto](#1-que-cambio-en-el-proyecto)
+  - [2. Por que en el Taller II no usamos Strategy y ahora si](#2-por-que-en-el-taller-ii-no-usamos-strategy-y-ahora-si)
+  - [3. Alternativas consideradas](#3-alternativas-consideradas)
+  - [4. Como quedo implementado](#4-como-quedo-implementado)
+  - [5. Beneficios y costos](#5-beneficios-y-costos)
+  - [6. Refactoring posterior y como verificamos que no cambio el comportamiento](#6-refactoring-posterior-y-como-verificamos-que-no-cambio-el-comportamiento)
+  - [7. Otras mejoras de calidad del Taller III](#7-otras-mejoras-de-calidad-del-taller-iii)
+
 Este documento registra las decisiones de diseño de PowerUp en orden cronológico. La sección del **Taller II** se conserva tal como la entregamos, porque muestra lo que evaluamos en ese momento. Solo agregamos notas marcadas como *Nota Taller III* donde una referencia de código cambió de lugar. La sección del **Taller III** explica lo que implementamos después y por qué algunas decisiones cambiaron.
 
 # Taller II — Análisis de una decisión de diseño
@@ -77,10 +98,12 @@ La decision del Taller II no era incorrecta. Cambiaron los requisitos. La formul
 
 ## 3. Alternativas consideradas
 
-| Alternativa | Ventaja | Por que no la elegimos |
+La revision de cierre precisa que un condicional puede delegar en funciones puras probadas directamente, y que servicios separados pueden compartir la consulta y el rango de fechas. Son alternativas validas; Strategy no es requisito para aislar calculos ni para evitar duplicacion.
+
+| Alternativa | Ventaja | Costo o limite |
 | --- | --- | --- |
-| **Condicional** (`if`/`switch` por modalidad dentro de `metrics.service.ts`) | Es lo mas simple. Con dos modalidades es tecnicamente viable. | Mezcla en un mismo archivo calculos que no comparten nada. Cada modalidad nueva obliga a modificar las funciones existentes, y probar un calculo exige pasar por el servicio. |
-| **Servicios separados por modalidad** | Separa los calculos. | Duplica la consulta autorizada, el manejo del rango de fechas y la conversion de datos, que son comunes a ambas modalidades. |
+| **Condicional** (`if`/`switch` por modalidad) | Es simple y puede seleccionar funciones puras probadas por separado. | Requiere mantener la seleccion; si tambien concentra los calculos en el servicio, ese archivo crece. |
+| **Servicios separados por modalidad** | Separa los calculos y puede reutilizar la consulta autorizada, el rango y la conversion de datos. | Requiere coordinar ese codigo comun; la duplicacion seria un riesgo de implementacion, no una consecuencia obligatoria. |
 | **Strategy con un registro explicito** (elegida) | Cada modalidad calcula en su propia clase. El servicio conserva lo comun: rango, consulta y permisos. | Agrega archivos e indireccion (ver costos). |
 | **Factory, clase abstracta o registro dinamico de estrategias** | Mas extensible. | Con dos estrategias fijas no aporta nada que un mapa explicito no haga. Seria agregar un patron por obligacion. |
 
@@ -149,6 +172,6 @@ Separamos las **correcciones de comportamiento** de los **refactorings**, porque
 
 Otras herramientas de calidad que usamos: TypeScript con `strict: true` (el build falla ante errores de tipos), validacion de entrada con express-validator, y un workflow de GitHub Actions que compila y ejecuta las pruebas en cada push y pull request (ver [testing.md](testing.md)).
 
-**Lo que sigue pendiente.** La duplicacion de `getAuthenticatedUserId` analizada en el Taller II **todavia no se resolvio**. Cinco controladores (`workout`, `metrics`, `trainingProgram`, `programWeek` y `scheduledWorkout`) usan la funcion compartida de `utils`, pero las cuatro copias locales siguen en `exercise`, `muscleGroup`, `workoutTemplate` y `workoutTemplateExercise`. Mantenemos el criterio del Taller II: hacer ese reemplazo cuando haya pruebas que verifiquen el comportamiento de esos controladores con usuarios reales. Hoy solo tienen pruebas de validacion HTTP (ver las limitaciones en [testing.md](testing.md#7-limitaciones-y-qué-no-se-prueba)).
+**Lo que sigue pendiente.** La duplicacion de `getAuthenticatedUserId` analizada en el Taller II **todavia no se resolvio**. Cinco controladores (`workout`, `metrics`, `trainingProgram`, `programWeek` y `scheduledWorkout`) usan la funcion compartida de `utils`, pero las cuatro copias locales siguen en `exercise`, `muscleGroup`, `workoutTemplate` y `workoutTemplateExercise`. La cobertura evoluciono: la suite de rutinas ya prueba plantillas y sus asociaciones con usuarios reales, y el E2E crea un ejercicio mediante HTTP. Grupos musculares no tiene una suite de integracion propia. La extraccion de las copias sigue pendiente; la cobertura actual y sus limites se detallan en [testing.md](testing.md#7-limitaciones-y-qué-no-se-prueba).
 
 **Adapter** sigue sin justificarse: no hay una integracion concreta con relojes u otras aplicaciones.
