@@ -2,7 +2,7 @@
 
 Este documento explica qué pruebas tiene el backend de PowerUp, qué comportamiento verifica cada grupo, cómo ejecutarlas, cómo leer sus resultados y qué queda sin probar.
 
-Herramientas: **Jest** (ejecución y aserciones), **Supertest** (peticiones HTTP contra la aplicación Express real, sin levantar un servidor) y **PostgreSQL 17** real para las suites de integración. No se agregaron otras dependencias.
+Herramientas: **Jest** (ejecución y aserciones), **Supertest** (peticiones HTTP contra la aplicación Express real) y **PostgreSQL 17** real para integración y E2E del backend. Supertest utiliza un servidor HTTP efímero dentro del proceso de pruebas; no arranca el servidor de despliegue. No se agregaron otras dependencias.
 
 ## 1. Resumen de las suites
 
@@ -16,9 +16,10 @@ Herramientas: **Jest** (ejecución y aserciones), **Supertest** (peticiones HTTP
 | Integración de métricas | `backend/functional-integration/metrics.test.js` | 3 | `npm run test:metrics` | Sí |
 | Integración de rutinas | `backend/functional-integration/routines.test.js` | 4 | `npm run test:routines` | Sí |
 | Integración de planificación | `backend/functional-integration/planning.test.js` | 3 | `npm run test:planning` | Sí |
-| **Total** | 11 archivos | **71** | | |
+| E2E del backend | `backend/e2e/critical-path.test.js` | 1 | `npm run test:e2e` | Sí |
+| **Total** | 12 archivos | **72** | | |
 
-`npm test` ejecuta juntas las unitarias y las HTTP (33 pruebas). Las suites con PostgreSQL tienen comandos propios porque requieren una base de prueba preparada (sección 3).
+`npm test` ejecuta juntas las unitarias y las HTTP (33 pruebas). Las suites con PostgreSQL, incluido el E2E, tienen comandos propios porque requieren una base de prueba preparada (sección 3).
 
 Todos los comandos se ejecutan desde `backend/`. Salvo `test:migrations`, cada comando compila primero con `npm run build`, porque las pruebas importan el código compilado de `dist/`. Si se ejecuta `npx jest` directamente sin compilar, se prueba la última compilación y no el código actual.
 
@@ -54,11 +55,11 @@ Las líneas como `POST /api/auth/register 400 67.994 ms` que aparecen durante la
 Estas suites crean tablas, insertan datos y los borran. Para que nunca toquen la base de desarrollo, **se niegan a ejecutarse** si la conexión no cumple todas estas condiciones:
 
 - La URL apunta a `localhost`, `127.0.0.1` o `[::1]` y el nombre de la base es el esperado por cada suite.
-- Las suites de `functional-integration/` exigen además puerto explícito y el usuario esperado; la suite de migraciones no comprueba esos dos campos.
-- Entrenamientos, métricas, rutinas y planificación comprueban que el servidor sea PostgreSQL 17. Autenticación no verifica su versión, aunque el entorno documentado y CI usan PostgreSQL 17.
+- Las suites de `functional-integration/` y `e2e/` exigen además puerto explícito y el usuario esperado; la suite de migraciones no comprueba esos dos campos.
+- Entrenamientos, métricas, rutinas, planificación y E2E comprueban que el servidor sea PostgreSQL 17. Autenticación no verifica su versión, aunque el entorno documentado y CI usan PostgreSQL 17.
 - No se lee el `.env` del proyecto.
 
-Además, cada suite de `functional-integration/` trabaja en un esquema con nombre aleatorio (`integration_test_<uuid>`) que se crea al empezar y se elimina al terminar. La suite de migraciones verifica antes de empezar que la base no contenga las tablas que va a crear, para no modificar ni borrar objetos existentes.
+Además, cada suite de `functional-integration/` y `e2e/` trabaja en un esquema con nombre aleatorio (`integration_test_<uuid>`) que se crea al empezar y se elimina al terminar. La suite de migraciones verifica antes de empezar que la base no contenga las tablas que va a crear, para no modificar ni borrar objetos existentes.
 
 Requieren **Node.js 24 instalado localmente**. No se pueden correr dentro del contenedor `backend`, porque la base de prueba tiene que ser accesible como `localhost`.
 
@@ -89,7 +90,7 @@ Windows PowerShell:
 Get-Content backend/integration/setup-test-databases.sql | docker exec -i powerup-test-db psql -U postgres -v ON_ERROR_STOP=1
 ```
 
-Debe mostrar seis `CREATE ROLE` y seis `CREATE DATABASE`.
+Debe mostrar siete `CREATE ROLE` y siete `CREATE DATABASE`.
 
 ### Paso 3 — Definir las variables de conexión
 
@@ -101,8 +102,9 @@ Debe mostrar seis `CREATE ROLE` y seis `CREATE DATABASE`.
 | `METRICS_TEST_DATABASE_URL` | Métricas | `powerup_metrics_integration_test` | `powerup_metrics_test` |
 | `ROUTINES_TEST_DATABASE_URL` | Rutinas | `powerup_routines_integration_test` | `powerup_routines_test` |
 | `PLANNING_TEST_DATABASE_URL` | Planificación | `powerup_planning_integration_test` | `powerup_planning_test` |
+| `E2E_TEST_DATABASE_URL` | E2E del backend | `powerup_e2e_test` | `powerup_e2e_test` |
 
-La contraseña de los seis usuarios es `powerup_test`, solamente para este entorno local.
+La contraseña de los siete usuarios es `powerup_test`, solamente para este entorno local.
 
 Linux, macOS o Git Bash (en la misma terminal donde se ejecutarán las pruebas):
 
@@ -114,6 +116,7 @@ export WORKOUTS_TEST_DATABASE_URL=postgres://powerup_workouts_test:powerup_test@
 export METRICS_TEST_DATABASE_URL=postgres://powerup_metrics_test:powerup_test@localhost:55432/powerup_metrics_integration_test
 export ROUTINES_TEST_DATABASE_URL=postgres://powerup_routines_test:powerup_test@localhost:55432/powerup_routines_integration_test
 export PLANNING_TEST_DATABASE_URL=postgres://powerup_planning_test:powerup_test@localhost:55432/powerup_planning_integration_test
+export E2E_TEST_DATABASE_URL=postgres://powerup_e2e_test:powerup_test@localhost:55432/powerup_e2e_test
 ```
 
 Windows PowerShell:
@@ -126,6 +129,7 @@ $env:WORKOUTS_TEST_DATABASE_URL = "postgres://powerup_workouts_test:powerup_test
 $env:METRICS_TEST_DATABASE_URL = "postgres://powerup_metrics_test:powerup_test@localhost:55432/powerup_metrics_integration_test"
 $env:ROUTINES_TEST_DATABASE_URL = "postgres://powerup_routines_test:powerup_test@localhost:55432/powerup_routines_integration_test"
 $env:PLANNING_TEST_DATABASE_URL = "postgres://powerup_planning_test:powerup_test@localhost:55432/powerup_planning_integration_test"
+$env:E2E_TEST_DATABASE_URL = "postgres://powerup_e2e_test:powerup_test@localhost:55432/powerup_e2e_test"
 ```
 
 ### Paso 4 — Ejecutar
@@ -137,6 +141,7 @@ npm run test:workouts
 npm run test:metrics
 npm run test:routines
 npm run test:planning
+npm run test:e2e
 ```
 
 Cada suite puede ejecutarse sola y repetirse: los datos de una ejecución no quedan para la siguiente.
@@ -171,16 +176,19 @@ Prueban los cálculos de [`StrengthStrategy`](../backend/src/services/strategies
 
 ### HTTP (17) — `tests/http/`
 
-Usan la aplicación Express real con Supertest, sin base de datos. Verifican lo que ocurre **antes** de llegar a la base.
+Usan la aplicación Express real con Supertest, sin PostgreSQL. Comprueban las respuestas de los casos indicados; no verifican persistencia ni operaciones de negocio exitosas.
 
 | Caso | Tipo | Por qué lo elegimos |
 | --- | --- | --- |
-| `GET /health` y `GET /api/health` responden `200` | Normal | Comprueban que la aplicación arranca. |
+| `GET /health` y `GET /api/health` responden `200` | Normal | Comprueban el estado y mensaje de esas dos rutas, sin verificar conexión a PostgreSQL ni el despliegue. |
 | Ruta inexistente → `404` con la ruta pedida | Error | Contrato de errores documentado en [API.md](API.md). |
-| Rutas protegidas sin token → `401` (workouts, metrics) | Error | La autenticación protege todos los recursos privados. |
-| Registro, login, ejercicios, programas, semanas y sesiones inválidos → `400` con el campo que falló | Error | Las validaciones rechazan datos antes de consultar la base. |
-| Fechas e IDs inválidos en métricas y rutas → `400` | Error | Parámetros de consulta mal formados. |
+| `GET /api/workouts` y `GET /api/metrics/summary` sin token → `401` | Error | En esas dos rutas se comprueba el mensaje `Token no proporcionado`; no se prueban todos los recursos privados. |
+| Registro, login, ejercicios, programas, semanas y sesiones inválidos → `400` | Error | Se comprueba el mensaje general `Datos invalidos`. Registro y login también exigen una lista de detalles no vacía; no se comprueba cada campo o mensaje específico. |
+| Filtro de ejercicios con `muscleGroupId=abc` → `400` | Error | Además del mensaje general, se verifica que `details` identifica `muscleGroupId`. |
+| Fechas e IDs inválidos en métricas y rutas → `400` | Error | Se comprueban el estado y el mensaje general `Datos invalidos` para las entradas elegidas. |
 | `duracionSegundos = 2147483648` al crear y al editar → `400` sin invocar el servicio | Límite | Es el máximo de `INTEGER` en PostgreSQL más uno. Antes de la corrección (commit `422cb72`), ese valor superaba la validación y llegaba a la base. La prueba usa un espía de Jest para demostrar que el servicio no se ejecuta. |
+
+Los casos de `api.basic.test.js` no instrumentan el servicio o la base para demostrar que nunca se consultaron. Esa comprobación explícita se realiza solamente en las dos pruebas del límite de duración mediante un espía sobre el servicio.
 
 ### Migraciones y restricciones SQL (20) — `integration/`
 
@@ -219,6 +227,17 @@ Recorren la aplicación completa: HTTP → validadores → controladores → ser
 | Planificación | Edición de semana y sesión | Normal | Nombre, descarga y día de la semana actualizados se guardan sin perder las asociaciones originales. |
 | Planificación | Otro usuario intenta editar o borrar programa, semana y sesión | Error | Las seis operaciones reciben `404`; los tres registros originales permanecen intactos. |
 
+### E2E del backend (1) — `e2e/`
+
+Es un único recorrido de usuario que combina funcionalidades previamente probadas por separado. Todos los datos funcionales se crean mediante HTTP, sin seeders, inserciones directas ni mocks. Solo el esquema y las migraciones se preparan directamente.
+
+- Registro → login: se comprueban usuario y mensajes, no se expone la contraseña y las peticiones protegidas usan el JWT obtenido en el login.
+- Se crea una sentadilla y un entrenamiento libre de fuerza con dos series: 10 repeticiones de 40 kg y 8 de 50 kg. Se verifican propietario, fecha UTC fija, series y asociación con el ejercicio.
+- Se registra una carrera libre de 5 km en 1800 segundos. Se comprueban 360 s/km (6 min/km), 10 km/h y ausencia de series o planificación.
+- Los listados recuperan los entrenamientos guardados: sin modalidad solo fuerza y con `modalidad=running` solo la carrera. Los resúmenes comprueban fuerza con 1 entrenamiento, 2 series, 18 repeticiones y volumen 800; running con 1 entrenamiento, 5 km, 1800 s, 360 s/km y 10 km/h.
+
+Esto recorre HTTP → Express → validadores/controladores → servicios → repositorios → Sequelize → PostgreSQL real. Es E2E a nivel del backend: no incluye navegador, frontend, proceso de despliegue ni infraestructura completa.
+
 ## 5. Cómo interpretar los resultados
 
 - `PASS` indica que todas las aserciones del archivo se cumplieron. `FAIL` muestra el nombre de la prueba, el valor esperado (`Expected`) y el obtenido (`Received`). Esa diferencia es el punto de partida para buscar el defecto.
@@ -234,26 +253,30 @@ Recorren la aplicación completa: HTTP → validadores → controladores → ser
 | 23/11/2026 | `d5ed072` (dev) | Windows 11, Node.js 24.21, PostgreSQL 17 en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · **64/64** |
 | 24/11/2026 | `f649b16` + cambios locales de cierre de rutinas | Linux, Node.js 24.13.0, PostgreSQL 17.9 descartable en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · **68/68** |
 | 24/11/2026 | `981c1b6` + cambios locales de cierre de planificación | Linux, Node.js 24.13.0, PostgreSQL 17.9 descartable en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · Planificación 3/3 · **71/71** |
+| 24/11/2026 | `31ae493` + cambios locales del E2E | Linux, Node.js 24.13.0, PostgreSQL 17.9 descartable en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · Planificación 3/3 · E2E 1/1 · **72/72** |
 
 En el cierre de planificación se reprodujo primero el fallo original (2/3): los dos GET por query respondían `400` ante IDs válidos. Tras corregir los controladores, las tres pruebas originales pasaron sin modificar sus aserciones. También se verificaron, mediante una sonda temporal fuera de la suite versionada, diez rechazos `400` de validación: parámetro ausente, texto, cero, negativo y decimal en cada endpoint. Estos diagnósticos no se cuentan como pruebas nuevas. `npm test` pasó con el PostgreSQL descartable ya eliminado y sin variables de conexión.
+
+En el cierre del E2E, el SQL actualizado creó siete bases y siete usuarios en un PostgreSQL nuevo y descartable. Se ejecutaron todas las suites sobre una copia temporal del contenido final, y después se comprobó que no quedaran esquemas de las suites ni tablas en `public`. Se eliminó el contenedor propio y `npm test` volvió a pasar (33/33) sin PostgreSQL ni variables de conexión. Esta ejecución local no demuestra la ejecución del workflow ampliado en GitHub.
 
 ## 6. Decisiones sobre las pruebas
 
 - **Base real para persistencia, no mocks.** Un mock no demuestra un rollback ni una restricción `CHECK`, y un `400` no demuestra por sí solo que no se haya escrito nada. Por eso las suites de integración consultan la base después de cada operación.
 - **Mocks solo donde aportan.** La prueba de duración usa un espía sobre el servicio para demostrar que la validación corta la petición antes de llegar a él.
 - **Cálculos sin base.** Las estrategias reciben datos planos (`MetricWorkout`), lo que permite probar fórmulas y bordes rápido y sin infraestructura.
-- **Aislamiento.** Hay una base y un usuario por suite, un esquema aleatorio por ejecución y datos creados en cada escenario (`beforeEach`). Ninguna prueba depende del orden ni de datos que haya dejado otra.
+- **Aislamiento.** Hay una base y un usuario por suite y un esquema aleatorio por ejecución. Los datos se crean en cada escenario; en el E2E se crean mediante HTTP dentro de la única prueba. Ninguna prueba depende del orden ni de datos que haya dejado otra.
 - **Pruebas de regresión antes de refactorizar.** Las pruebas unitarias de Strategy (commit `7bb0195`) se escribieron antes del refactoring de métricas (`406820c`, `1d3c96a`) y sus expectativas no cambiaron después. Ver [decisiones-diseno.md](decisiones-diseno.md).
 
 ## 7. Limitaciones y qué no se prueba
 
 - **La suite de rutinas** tiene cuatro pruebas de integración para alta, relaciones, edición, campos nullable y rechazo de modificaciones ajenas. No se comprueban la eliminación exitosa, las cascadas ni todos los casos de lectura y validación.
 - **La suite de planificación** conserva las tres pruebas originales: alta y relaciones, listados por query, edición y rechazo de modificaciones ajenas. No comprueba eliminación exitosa, cascadas, consultas ajenas ni todas las reglas de validación o conflictos.
-- **Ejercicios** y **grupos musculares** no tienen suites de integración propias. Las pruebas HTTP existentes cubren algunas validaciones; sus permisos y eliminaciones no se verifican exhaustivamente.
+- **Ejercicios** y **grupos musculares** no tienen suites de integración propias. El E2E cubre el alta de un ejercicio y su asociación con series; no cubre grupos musculares. Sus permisos y eliminaciones no se verifican exhaustivamente.
+- **El E2E del backend** cubre un recorrido exitoso con un usuario; no cubre edición, eliminación, errores ni planificación. Los permisos entre usuarios se comprueban en otras suites. No se verifica navegador, frontend, despliegue, rendimiento ni infraestructura completa.
 - `GET /api/metrics/activity-heatmap` y `GET /api/metrics/exercise-progress` no tienen pruebas de integración con datos reales. El calendario se verifica en las pruebas unitarias de las estrategias. El progreso por ejercicio y la fórmula de 1RM (Epley) solo tienen pruebas de validación HTTP.
 - No se prueban el token vencido ni el formato de token incorrecto. Sí se prueba la ausencia de token.
 - Los seeders y el arranque con Docker Compose no se verifican con pruebas automatizadas, sino siguiendo el README.
-- Las dos ejecuciones de GitHub Actions correspondientes a la PR #17 y a su integración en `dev` fueron exitosas. La PR #18 de rutinas ya fue integrada en `dev` con ambos jobs exitosos. La incorporación de planificación al workflow todavía debe verificarse en GitHub al publicar esta rama; esos resultados anteriores no validan este cambio nuevo.
+- Las dos ejecuciones de GitHub Actions correspondientes a la PR #17 y a su integración en `dev` fueron exitosas. La PR #18 de rutinas ya fue integrada en `dev` con ambos jobs exitosos. La incorporación del E2E al workflow debe verificarse en GitHub al publicar esta rama; las ejecuciones anteriores no validan esta ampliación.
 - No se mide cobertura. La consigna no la exige y preferimos elegir casos por riesgo.
 
 ## 8. Integración continua
@@ -261,6 +284,6 @@ En el cierre de planificación se reprodujo primero el fallo original (2/3): los
 El workflow [`.github/workflows/tests.yml`](../.github/workflows/tests.yml) automatiza en GitHub Actions las mismas verificaciones de este documento, en cada `push` y `pull request` hacia `dev` o `main`:
 
 1. **Compilación y pruebas sin base:** `npm ci` y `npm test`.
-2. **Integración con PostgreSQL:** levanta un servicio `postgres:17-alpine`, ejecuta `setup-test-databases.sql`, define las seis variables de la sección 3 (con el puerto `5432` del servicio) y corre las seis suites, incluidas rutinas y planificación.
+2. **Integración con PostgreSQL:** levanta un servicio `postgres:17-alpine`, ejecuta `setup-test-databases.sql`, define las siete variables de la sección 3 (con el puerto `5432` del servicio) y corre migraciones, las cinco suites de integración funcional y el E2E del backend.
 
 Es una mejora opcional: la consigna no exige CI. Sirve para detectar regresiones antes de integrar una rama, sin depender de que alguien recuerde ejecutar las suites a mano. No incluye despliegue.
