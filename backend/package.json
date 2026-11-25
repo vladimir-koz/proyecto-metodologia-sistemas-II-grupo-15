@@ -20,6 +20,7 @@
     "test:auth": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/auth.test.js\"",
     "test:planning": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/planning.test.js\"",
     "test:routines": "npm run build && jest --runInBand --testMatch \"<rootDir>/functional-integration/routines.test.js\"",
+    "test:e2e": "npm run build && jest --runInBand --testMatch \"<rootDir>/e2e/critical-path.test.js\"",
     "test:unit": "npm run build && jest --runInBand --testMatch \"<rootDir>/tests/unit/**/*.test.js\"",
     "test:http": "npm run build && jest --runInBand --testMatch \"<rootDir>/tests/http/**/*.test.js\"",
     "test:migrations": "jest --runInBand --testMatch \"<rootDir>/integration/**/*.test.js\""
