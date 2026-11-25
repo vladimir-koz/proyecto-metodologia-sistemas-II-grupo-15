@@ -183,19 +183,21 @@ La forma de ejecutar estos comandos depende de la opción elegida:
 | `npm test` | Para verificar cambios. Compila el proyecto y ejecuta las 33 pruebas unitarias y HTTP. No necesita base de datos. |
 | `npm run test:unit` / `npm run test:http` | Para ejecutar solo las pruebas unitarias (16) o solo las HTTP (17). |
 | `npm run test:migrations`, `test:auth`, `test:workouts`, `test:metrics`, `test:routines`, `test:planning` | Pruebas de integración con PostgreSQL real. Requieren una base de prueba descartable: ver [docs/testing.md](docs/testing.md#3-pruebas-de-integración-con-postgresql). |
+| `npm run test:e2e` | Recorrido completo de un usuario por la API del backend, con PostgreSQL descartable y `E2E_TEST_DATABASE_URL`: ver [docs/testing.md](docs/testing.md#3-pruebas-de-integración-con-postgresql). No incluye navegador ni frontend. |
 
 Los comandos `npm` y `docker compose` son iguales en Linux, macOS y PowerShell. Las diferencias necesarias ya están indicadas en las opciones de arranque: `cp` en Linux/macOS, `Copy-Item` en PowerShell y el acceso a PostgreSQL como administrador en la opción 3.
 
 ## Pruebas
 
-El backend tiene 71 pruebas automatizadas con Jest y Supertest:
+El backend tiene 72 pruebas automatizadas con Jest y Supertest:
 
 | Grupo | Pruebas | Qué comprueban | Comando |
 | --- | ---: | --- | --- |
 | Unitarias | 16 | Cálculos de fuerza y running, y selección de la estrategia de métricas. | `npm run test:unit` |
-| HTTP | 17 | Healthchecks, rutas inexistentes, autenticación requerida y validaciones. | `npm run test:http` |
+| HTTP | 17 | Healthchecks, rutas inexistentes, rechazo sin token en workouts/metrics y algunas validaciones. | `npm run test:http` |
 | Migraciones | 20 | Migraciones de running, restricciones SQL, conservación de datos y reversión. | `npm run test:migrations` |
 | Integración | 18 | Autenticación, entrenamientos, métricas, rutinas y planificación sobre PostgreSQL real: persistencia, permisos entre usuarios y atomicidad. | `npm run test:auth`, `test:workouts`, `test:metrics`, `test:routines`, `test:planning` |
+| E2E del backend | 1 | Registro y login reales, ejercicio, fuerza, running, listados y métricas conocidas, con todos los datos funcionales creados por HTTP. | `npm run test:e2e` |
 
 Verificación rápida, sin base de datos:
 
@@ -206,7 +208,7 @@ npm test
 
 En la opción 1 (todo con Docker): `docker compose exec backend npm test`. El resultado esperado es `Tests: 33 passed, 33 total`.
 
-Las suites de migraciones e integración usan un PostgreSQL 17 descartable, separado de la base de desarrollo. [docs/testing.md](docs/testing.md) explica cómo prepararlo, qué casos se eligieron y por qué, y qué queda sin probar.
+Las suites de migraciones, integración funcional y E2E del backend usan un PostgreSQL 17 descartable, separado de la base de desarrollo. [docs/testing.md](docs/testing.md) explica cómo prepararlo, qué casos se eligieron y por qué, y qué queda sin probar.
 
 En GitHub, el workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) ejecuta las mismas pruebas en cada push y pull request hacia `dev` o `main`.
 
@@ -220,7 +222,7 @@ El flujo principal es `routes → validators/middlewares → controllers → ser
 | `backend/migrations` | Esquema de la base, incluida la incorporación de running y sus restricciones. |
 | `backend/seeders` | Datos demo. |
 | `backend/tests/unit`, `backend/tests/http` | Pruebas que no necesitan base de datos (`npm test`). |
-| `backend/integration`, `backend/functional-integration` | Pruebas con PostgreSQL real y el script que prepara sus bases. |
+| `backend/integration`, `backend/functional-integration`, `backend/e2e` | Migraciones, integración funcional y E2E del backend con PostgreSQL real; incluye el script que prepara sus bases. |
 | `docs/` | Documentación técnica (ver [Documentación](#documentación)). |
 
 ## Problemas frecuentes
