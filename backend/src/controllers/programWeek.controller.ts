@@ -11,11 +11,11 @@ import { getAuthenticatedUserId } from '../utils/getAuthenticatedUserId';
 import { parseId } from '../utils/parseId';
 
 function parseRequiredQueryId(value: unknown, fieldName: string): number {
-  if (typeof value !== 'string') {
-    throw new AppError(`El query param ${fieldName} es obligatorio`, 400);
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new AppError(`El query param ${fieldName} debe ser un entero positivo`, 400);
   }
 
-  return parseId(value);
+  return value;
 }
 
 export async function index(req: Request, res: Response, next: NextFunction): Promise<void> {

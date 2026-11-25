@@ -20,3 +20,6 @@ CREATE DATABASE powerup_metrics_integration_test OWNER powerup_metrics_test;
 
 CREATE ROLE powerup_routines_test LOGIN PASSWORD 'powerup_test';
 CREATE DATABASE powerup_routines_integration_test OWNER powerup_routines_test;
+
+CREATE ROLE powerup_planning_test LOGIN PASSWORD 'powerup_test';
+CREATE DATABASE powerup_planning_integration_test OWNER powerup_planning_test;
