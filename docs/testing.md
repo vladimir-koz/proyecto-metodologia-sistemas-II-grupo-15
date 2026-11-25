@@ -1,5 +1,32 @@
 # Pruebas automatizadas
 
+[Volver al README](../README.md)
+
+**Índice**
+
+- [1. Resumen de las suites](#1-resumen-de-las-suites)
+- [2. Pruebas sin base de datos (`npm test`)](#2-pruebas-sin-base-de-datos-npm-test)
+- [3. Pruebas de integración con PostgreSQL](#3-pruebas-de-integración-con-postgresql)
+  - [Por qué se ejecutan aparte](#por-qué-se-ejecutan-aparte)
+  - [Paso 1 — Levantar un PostgreSQL 17 descartable](#paso-1--levantar-un-postgresql-17-descartable)
+  - [Paso 2 — Crear las bases y usuarios de prueba](#paso-2--crear-las-bases-y-usuarios-de-prueba)
+  - [Paso 3 — Definir las variables de conexión](#paso-3--definir-las-variables-de-conexión)
+  - [Paso 4 — Ejecutar](#paso-4--ejecutar)
+  - [Paso 5 — Eliminar el entorno de prueba](#paso-5--eliminar-el-entorno-de-prueba)
+- [4. Qué verifica cada grupo y por qué elegimos esos casos](#4-qué-verifica-cada-grupo-y-por-qué-elegimos-esos-casos)
+  - [Unitarias de Strategy (16) — `tests/unit/`](#unitarias-de-strategy-16--testsunit)
+  - [HTTP (17) — `tests/http/`](#http-17--testshttp)
+  - [Migraciones y restricciones SQL (20) — `integration/`](#migraciones-y-restricciones-sql-20--integration)
+  - [Integración funcional (18) — `functional-integration/`](#integración-funcional-18--functional-integration)
+  - [E2E del backend (1) — `e2e/`](#e2e-del-backend-1--e2e)
+- [5. Cómo interpretar los resultados](#5-cómo-interpretar-los-resultados)
+  - [Última ejecución registrada](#última-ejecución-registrada)
+  - [Auditoría definitiva del 24/11/2026](#auditoría-definitiva-del-24112026)
+- [6. Decisiones sobre las pruebas](#6-decisiones-sobre-las-pruebas)
+- [7. Limitaciones y qué no se prueba](#7-limitaciones-y-qué-no-se-prueba)
+  - [Alertas de dependencias pendientes](#alertas-de-dependencias-pendientes)
+- [8. Integración continua](#8-integración-continua)
+
 Este documento explica qué pruebas tiene el backend de PowerUp, qué comportamiento verifica cada grupo, cómo ejecutarlas, cómo leer sus resultados y qué queda sin probar.
 
 Herramientas: **Jest** (ejecución y aserciones), **Supertest** (peticiones HTTP contra la aplicación Express real) y **PostgreSQL 17** real para integración y E2E del backend. Supertest utiliza un servidor HTTP efímero dentro del proceso de pruebas; no arranca el servidor de despliegue. No se agregaron otras dependencias.
@@ -52,12 +79,14 @@ Las líneas como `POST /api/auth/register 400 67.994 ms` que aparecen durante la
 
 ### Por qué se ejecutan aparte
 
-Estas suites crean tablas, insertan datos y los borran. Para que nunca toquen la base de desarrollo, **se niegan a ejecutarse** si la conexión no cumple todas estas condiciones:
+Estas suites crean tablas, insertan datos y los borran. Para reducir el riesgo de usar otra conexión, aplican las siguientes comprobaciones y configuración:
 
 - La URL apunta a `localhost`, `127.0.0.1` o `[::1]` y el nombre de la base es el esperado por cada suite.
 - Las suites de `functional-integration/` y `e2e/` exigen además puerto explícito y el usuario esperado; la suite de migraciones no comprueba esos dos campos.
 - Entrenamientos, métricas, rutinas, planificación y E2E comprueban que el servidor sea PostgreSQL 17. Autenticación no verifica su versión, aunque el entorno documentado y CI usan PostgreSQL 17.
 - No se lee el `.env` del proyecto.
+
+Estas comprobaciones **no garantizan por sí solas que una base sea descartable**. Antes de ejecutar SQL hay que crear y reconocer una instancia de pruebas separada, y verificar su host, puerto, base y usuario. Que la URL sea local y tenga el nombre esperado no acredita que sus datos puedan eliminarse.
 
 Además, cada suite de `functional-integration/` y `e2e/` trabaja en un esquema con nombre aleatorio (`integration_test_<uuid>`) que se crea al empezar y se elimina al terminar. La suite de migraciones verifica antes de empezar que la base no contenga las tablas que va a crear, para no modificar ni borrar objetos existentes.
 
@@ -149,10 +178,10 @@ Cada suite puede ejecutarse sola y repetirse: los datos de una ejecución no que
 ### Paso 5 — Eliminar el entorno de prueba
 
 ```bash
-docker rm -f powerup-test-db
+docker rm -fv powerup-test-db
 ```
 
-Borra el contenedor y todas las bases de prueba. No afecta a la base de desarrollo de Docker Compose.
+Borra el contenedor y sus volúmenes anónimos asociados, que contienen las bases de prueba. No afecta a la base de desarrollo de Docker Compose.
 
 ## 4. Qué verifica cada grupo y por qué elegimos esos casos
 
@@ -204,7 +233,7 @@ Ejecutan las migraciones de running directamente sobre PostgreSQL, sin cargar la
 
 ### Integración funcional (18) — `functional-integration/`
 
-Recorren la aplicación completa: HTTP → validadores → controladores → servicios → repositorios → Sequelize → PostgreSQL. Además de la respuesta HTTP, consultan la base para comprobar el estado guardado.
+Los escenarios HTTP recorren validadores → controladores → servicios → repositorios → Sequelize → PostgreSQL y consultan la base para comprobar el estado guardado. La excepción es la prueba de rollback de entrenamientos: invoca directamente `createWorkoutForUser()` del repositorio para provocar un fallo real de FK dentro de la transacción; no atraviesa HTTP ni el servicio.
 
 | Suite | Caso | Tipo | Qué se verifica además del código HTTP |
 | --- | --- | --- | --- |
@@ -254,10 +283,23 @@ Esto recorre HTTP → Express → validadores/controladores → servicios → re
 | 24/11/2026 | `f649b16` + cambios locales de cierre de rutinas | Linux, Node.js 24.13.0, PostgreSQL 17.9 descartable en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · **68/68** |
 | 24/11/2026 | `981c1b6` + cambios locales de cierre de planificación | Linux, Node.js 24.13.0, PostgreSQL 17.9 descartable en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · Planificación 3/3 · **71/71** |
 | 24/11/2026 | `31ae493` + cambios locales del E2E | Linux, Node.js 24.13.0, PostgreSQL 17.9 descartable en Docker | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · Planificación 3/3 · E2E 1/1 · **72/72** |
+| 24/11/2026 | `71c5e5c` (auditoría definitiva) | Linux, Node.js 24.13.0 local y 24.22.3 en Docker, PostgreSQL 17.9 descartable | Unitarias + HTTP 33/33 · Migraciones 20/20 · Autenticación 4/4 · Entrenamientos 4/4 · Métricas 3/3 · Rutinas 4/4 · Planificación 3/3 · E2E 1/1 · **72/72** |
 
 En el cierre de planificación se reprodujo primero el fallo original (2/3): los dos GET por query respondían `400` ante IDs válidos. Tras corregir los controladores, las tres pruebas originales pasaron sin modificar sus aserciones. También se verificaron, mediante una sonda temporal fuera de la suite versionada, diez rechazos `400` de validación: parámetro ausente, texto, cero, negativo y decimal en cada endpoint. Estos diagnósticos no se cuentan como pruebas nuevas. `npm test` pasó con el PostgreSQL descartable ya eliminado y sin variables de conexión.
 
 En el cierre del E2E, el SQL actualizado creó siete bases y siete usuarios en un PostgreSQL nuevo y descartable. Se ejecutaron todas las suites sobre una copia temporal del contenido final, y después se comprobó que no quedaran esquemas de las suites ni tablas en `public`. Se eliminó el contenedor propio y `npm test` volvió a pasar (33/33) sin PostgreSQL ni variables de conexión. Esta ejecución local no demuestra la ejecución del workflow ampliado en GitHub.
+
+### Auditoría definitiva del 24/11/2026
+
+Se verificó una copia limpia de `71c5e5c` obtenida con `git archive HEAD`, sin modificar el repositorio original. Los siguientes resultados son locales y corresponden a esa revisión:
+
+- `npm ci` y compilación correctos, también compilación dentro del contenedor. El procedimiento equivalente a los comandos del workflow aprobó las 72 pruebas; no demuestra una ejecución en GitHub Actions.
+- Docker Compose arrancó backend, PostgreSQL y pgAdmin. `db:setup` aplicó tres migraciones y cinco seeders; los healthchecks y el login demo funcionaron. Se usaron proyecto, recursos y puertos propios para mantener el aislamiento.
+- El backend local funcionó con `.env.example`, otra base nueva en PostgreSQL 17 descartable y puertos propios. No se verificó una instalación nativa de PostgreSQL sin Docker ni se ejecutó PowerShell.
+- Se ejecutaron las 59 peticiones de `requests.http` contra el servidor real, con los códigos esperados. También se comprobaron valores representativos, como volumen 312 y estimación Epley 36,4 en el progreso por ejercicio. Son verificaciones de auditoría, no 59 pruebas nuevas de Jest.
+- El SQL de preparación creó siete bases y siete usuarios. Tras comprobar la limpieza de las suites, se eliminaron los recursos Docker propios. `npm test` volvió a aprobar 33/33 sin ese PostgreSQL ni variables de conexión. Las 16 unitarias también aprobaron con `TZ=America/Argentina/Buenos_Aires`.
+
+Las suites con PostgreSQL tardaron entre 1,63 y 5,13 segundos por comando, incluyendo compilación cuando corresponde. La compilación local separada tardó 2,62 segundos y `npm test`, 4,35 segundos. Estos resultados no certifican preparación para producción ni ausencia de defectos fuera de los casos probados.
 
 ## 6. Decisiones sobre las pruebas
 
@@ -273,17 +315,37 @@ En el cierre del E2E, el SQL actualizado creó siete bases y siete usuarios en u
 - **La suite de planificación** conserva las tres pruebas originales: alta y relaciones, listados por query, edición y rechazo de modificaciones ajenas. No comprueba eliminación exitosa, cascadas, consultas ajenas ni todas las reglas de validación o conflictos.
 - **Ejercicios** y **grupos musculares** no tienen suites de integración propias. El E2E cubre el alta de un ejercicio y su asociación con series; no cubre grupos musculares. Sus permisos y eliminaciones no se verifican exhaustivamente.
 - **El E2E del backend** cubre un recorrido exitoso con un usuario; no cubre edición, eliminación, errores ni planificación. Los permisos entre usuarios se comprueban en otras suites. No se verifica navegador, frontend, despliegue, rendimiento ni infraestructura completa.
-- `GET /api/metrics/activity-heatmap` y `GET /api/metrics/exercise-progress` no tienen pruebas de integración con datos reales. El calendario se verifica en las pruebas unitarias de las estrategias. El progreso por ejercicio y la fórmula de 1RM (Epley) solo tienen pruebas de validación HTTP.
+- `GET /api/metrics/activity-heatmap` y `GET /api/metrics/exercise-progress` no tienen pruebas automatizadas de integración con datos reales. El calendario se verifica en unitarias; en la suite automatizada, el progreso por ejercicio y 1RM (Epley) solo tienen validaciones HTTP. Las peticiones de auditoría anteriores no amplían esa cobertura automatizada.
 - No se prueban el token vencido ni el formato de token incorrecto. Sí se prueba la ausencia de token.
-- Los seeders y el arranque con Docker Compose no se verifican con pruebas automatizadas, sino siguiendo el README.
-- Las dos ejecuciones de GitHub Actions correspondientes a la PR #17 y a su integración en `dev` fueron exitosas. La PR #18 de rutinas ya fue integrada en `dev` con ambos jobs exitosos. La incorporación del E2E al workflow debe verificarse en GitHub al publicar esta rama; las ejecuciones anteriores no validan esta ampliación.
+- Los seeders y el arranque con Docker Compose no forman parte de las 72 pruebas automatizadas; se comprobaron durante la auditoría local siguiendo el README.
+- Se registraron ejecuciones exitosas de GitHub Actions para la PR #17 y su integración en `dev`, y ambos jobs exitosos para la PR #18 de rutinas. Las ejecuciones confirmadas de planificación y E2E figuran en la sección 8; son evidencia distinta de la auditoría local, que no consultó GitHub.
+- Las 72 pruebas aprobadas no cubren los [defectos nullable conocidos](API.md#defectos-conocidos-en-campos-nullable), los errores 500 por duplicados de planificación ni la pérdida de series al eliminar ejercicios, documentados en la API. Siguen pendientes de corrección o revisión funcional.
 - No se mide cobertura. La consigna no la exige y preferimos elegir casos por riesgo.
+
+### Alertas de dependencias pendientes
+
+En la auditoría de `71c5e5c`, `npm ci` y `npm audit` informaron **13 alertas: 10 moderadas, 2 altas y 1 crítica** sobre las versiones del lockfile. Es un resultado fechado; puede variar al actualizarse la información de las dependencias.
+
+Entre las alertas están `body-parser 1.20.8` (alta, denegación de servicio; la aplicación usa `express.json()`) y `proxy-addr 2.0.7` (crítica, asociada a determinadas configuraciones de confianza en proxies). La auditoría no realizó pruebas de explotación ni demostró explotación en PowerUp; no se encontró configuración de `trust proxy` ni autorización basada en IP. La severidad del aviso no prueba por sí sola que esa condición sea explotable en esta aplicación.
+
+Queda pendiente evaluar alcance y actualizaciones compatibles antes de una exposición pública. No se modificaron dependencias ni se aplicaron correcciones automáticas; las alertas no deben presentarse como vulnerabilidades explotadas ni como resueltas.
 
 ## 8. Integración continua
 
-El workflow [`.github/workflows/tests.yml`](../.github/workflows/tests.yml) automatiza en GitHub Actions las mismas verificaciones de este documento, en cada `push` y `pull request` hacia `dev` o `main`:
+El workflow [`.github/workflows/tests.yml`](../.github/workflows/tests.yml) automatiza la compilación y las 72 pruebas en GitHub Actions, en cada `push` y `pull request` hacia `dev` o `main`:
 
 1. **Compilación y pruebas sin base:** `npm ci` y `npm test`.
 2. **Integración con PostgreSQL:** levanta un servicio `postgres:17-alpine`, ejecuta `setup-test-databases.sql`, define las siete variables de la sección 3 (con el puerto `5432` del servicio) y corre migraciones, las cinco suites de integración funcional y el E2E del backend.
+
+CI no automatiza todas las comprobaciones adicionales de la auditoría local: el arranque con Docker Compose, los seeders, el backend local y la ejecución de las 59 peticiones de `requests.http` se verificaron por separado.
+
+El equipo verificó directamente estas ejecuciones exitosas de GitHub Actions:
+
+| Ejecución | Run exitoso |
+| --- | --- |
+| PR #19 de planificación | [45515072088](https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15/actions/runs/45515072088) |
+| Integración de planificación en `dev` | [45515202771](https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15/actions/runs/45515202771) |
+| PR #20 de E2E | [45519596994](https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15/actions/runs/45519596994) |
+| Integración de E2E en `dev`, commit `b970235` | [45519748122](https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15/actions/runs/45519748122) |
 
 Es una mejora opcional: la consigna no exige CI. Sirve para detectar regresiones antes de integrar una rama, sin depender de que alguien recuerde ejecutar las suites a mano. No incluye despliegue.

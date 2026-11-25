@@ -1,6 +1,29 @@
 # Documentacion tecnica de la API REST
 
-Referencia del contrato HTTP implementado por el backend de PowerUp. La informacion de este documento surge de las rutas, validadores, servicios, modelos y migraciones vigentes al 23 de noviembre de 2026, e incluye la modalidad running incorporada en el Taller III.
+[Volver al README](../README.md)
+
+**Índice**
+
+- [1. Informacion general](#1-informacion-general)
+- [2. Autenticacion y autorizacion](#2-autenticacion-y-autorizacion)
+- [3. Convenciones del contrato](#3-convenciones-del-contrato)
+- [4. Modelos de respuesta](#4-modelos-de-respuesta)
+- [5. Resumen de endpoints](#5-resumen-de-endpoints)
+- [6. Healthchecks](#6-healthchecks)
+- [7. Autenticacion (`/api/auth`)](#7-autenticacion-apiauth)
+- [8. Ejercicios (`/api/exercises`)](#8-ejercicios-apiexercises)
+- [9. Grupos musculares (`/api/muscle-groups`)](#9-grupos-musculares-apimuscle-groups)
+- [10. Plantillas (`/api/workout-templates`)](#10-plantillas-apiworkout-templates)
+- [11. Ejercicios de plantilla (`/api/workout-template-exercises`)](#11-ejercicios-de-plantilla-apiworkout-template-exercises)
+- [12. Programas (`/api/training-programs`)](#12-programas-apitraining-programs)
+- [13. Semanas de programa (`/api/program-weeks`)](#13-semanas-de-programa-apiprogram-weeks)
+- [14. Entrenamientos programados (`/api/scheduled-workouts`)](#14-entrenamientos-programados-apischeduled-workouts)
+- [15. Entrenamientos realizados (`/api/workouts`)](#15-entrenamientos-realizados-apiworkouts)
+- [16. Metricas (`/api/metrics`)](#16-metricas-apimetrics)
+- [17. Datos iniciales utiles](#17-datos-iniciales-utiles)
+- [18. Flujo recomendado](#18-flujo-recomendado)
+
+Referencia del contrato HTTP implementado por el backend de PowerUp. La informacion de este documento surge de las rutas, validadores, servicios, modelos y migraciones revisados al 24 de noviembre de 2026, e incluye la modalidad running incorporada en el Taller III.
 
 ## 1. Informacion general
 
@@ -27,6 +50,8 @@ La ausencia del encabezado produce `401 { "error": "Token no proporcionado" }`; 
 
 Los ejercicios, grupos musculares, plantillas y programas con `userId: null` son recursos globales visibles para todos los usuarios autenticados, pero no se pueden modificar ni eliminar. Los recursos con `userId` pertenecen a ese usuario. Las semanas y entrenamientos programados heredan la visibilidad y propiedad de su programa. Los entrenamientos realizados siempre pertenecen al usuario autenticado.
 
+Modificar o eliminar un recurso global visible produce `403`. En las consultas, actualizaciones y eliminaciones, los recursos privados ajenos se tratan como no visibles y producen `404`, igual que los inexistentes.
+
 ## 3. Convenciones del contrato
 
 - Los IDs recibidos por ruta, query o body son enteros mayores o iguales a `1`.
@@ -39,6 +64,24 @@ Los ejercicios, grupos musculares, plantillas y programas con `userId: null` son
 - En `PUT` solo se modifican los campos enviados. En `PUT /workouts/:id`, si se envia `series`, la coleccion completa anterior se reemplaza.
 - Los entrenamientos realizados tienen una `modalidad`: `fuerza` o `running`. Si se omite, se asume `fuerza`, tanto al crear como al consultar listados y metricas. Ver la seccion 15.
 - Unidades de running: distancia en kilometros (`distanciaKm`), duracion en segundos (`duracionSegundos`), ritmo en segundos por kilometro y velocidad en km/h. Un ritmo de 6:30 min/km equivale a `390` s/km, no a `6.30`.
+
+### Defectos conocidos en campos nullable
+
+El contrato admite `null` en los campos indicados abajo. En una actualizacion de un recurso propio, omitir un campo debe conservar su valor, enviar `null` debe eliminarlo si es nullable, y un string valido debe conservar su tratamiento habitual. En un alta, las fechas nullable deben poder guardarse como `NULL`.
+
+La auditoria definitiva de `71c5e5c` confirmo estas diferencias entre el comportamiento esperado y el actual. Son **defectos pendientes de correccion**, no respuestas correctas del contrato:
+
+| Operacion | Campos enviados individualmente como `null` | Esperado | Actual |
+| --- | --- | --- | --- |
+| `PUT /api/exercises/:id` | `descripcion`, `imagen` | `200`, campo guardado como `NULL` | `500` |
+| `PUT /api/training-programs/:id` | `descripcion`, `objetivo`, `estado`, `fechaInicio`, `fechaFin` | `200`, campo guardado como `NULL` | `500` |
+| `POST /api/training-programs` | `fechaInicio` | `201`, fecha guardada como `NULL` | `500` |
+| `PUT /api/program-weeks/:id` | `nombre`, `objetivo`, `notas` | `200`, campo guardado como `NULL` | `500` |
+| `PUT /api/scheduled-workouts/:id` | `notas`, `fechaProgramada` | `200`, campo guardado como `NULL` | `500` |
+| `POST /api/scheduled-workouts` | `fechaProgramada` | `201`, fecha guardada como `NULL` | `500` |
+| `PUT /api/scheduled-workouts/:id` | `diaSemana` | `200`, campo guardado como `NULL` | `400`: `El diaSemana debe estar entre 1 y 7` |
+
+Los `500` se deben a llamadas a `.trim()` sobre `null` en los servicios; algunos DTO tampoco representan ese valor permitido por los validadores. Los cuatro campos de texto nullable de plantillas ya estan corregidos y tienen una prueba de regresion. Esa correccion no se extiende a los recursos de esta tabla.
 
 ### Errores
 
@@ -81,7 +124,7 @@ Ruta inexistente (`404`):
 | `204` | Eliminacion exitosa sin body, solo para workouts |
 | `400` | Datos o relaciones invalidas |
 | `401` | Token ausente, invalido o vencido |
-| `403` | El usuario intenta modificar un recurso global o ajeno |
+| `403` | El usuario intenta modificar o eliminar un recurso global visible |
 | `404` | Ruta o recurso no encontrado/no visible para el usuario |
 | `500` | Error interno no controlado |
 
@@ -317,6 +360,8 @@ Acepta los mismos campos, todos opcionales. Respuesta `200`: `{ "message": "Ejer
 
 Respuesta `200`: `{ "message": "Ejercicio eliminado exitosamente" }`. Responde `403` al intentar eliminar uno global.
 
+**Advertencia sobre historicos:** eliminar un ejercicio propio utilizado tambien elimina sus series en `workout_sets` por `ON DELETE CASCADE` de la FK `exerciseId`. Los entrenamientos permanecen, pero pierden esas series y cambian sus metricas historicas. Es la politica actualmente implementada y una **limitacion pendiente de revision funcional**; no garantiza conservar el historial del usuario.
+
 ## 9. Grupos musculares (`/api/muscle-groups`)
 
 ### `GET /muscle-groups`
@@ -462,6 +507,8 @@ Respuesta `200`: `{ "programWeek": ProgramWeek }` o `404`.
 
 Respuesta `201`: `{ "message": "Semana de programa creada exitosamente", "programWeek": ProgramWeek }`.
 
+**Defecto conocido de duplicados:** la restriccion SQL unica sobre (`trainingProgramId`, `numeroSemana`) impide repetir una semana dentro del programa. En la auditoria, una segunda alta con ese par produjo HTTP `500`; el rechazo de PostgreSQL no se traduce a un error de cliente controlado. Los datos no se duplican. La correccion de esa respuesta esta pendiente.
+
 ### `PUT /program-weeks/:id`
 
 Acepta los mismos campos como opcionales. Un nuevo `trainingProgramId` debe ser propio. Respuesta `200`: `{ "message": "Semana de programa actualizada exitosamente", "programWeek": ProgramWeek }`.
@@ -493,6 +540,8 @@ Respuesta `200`: `{ "scheduledWorkout": ScheduledWorkout }` o `404`.
 | `notas` | string/null | No | Texto |
 
 Respuesta `201`: `{ "message": "Entrenamiento programado creado exitosamente", "scheduledWorkout": ScheduledWorkout }`.
+
+**Defecto conocido de duplicados:** la restriccion SQL unica sobre (`programWeekId`, `orden`) impide repetir el orden dentro de una semana. En la auditoria, una segunda alta con ese par produjo HTTP `500`; los datos no se duplican, pero falta traducir el rechazo SQL a un error de cliente controlado.
 
 ### `PUT /scheduled-workouts/:id`
 
@@ -580,7 +629,7 @@ Errores propios de las modalidades (`400 { "error": "..." }`):
 
 Los valores con formato invalido (por ejemplo `distanciaKm: 0` o `duracionSegundos: 2147483648`) se rechazan antes, con el formato de error de validacion `Datos invalidos` y el campo en `details`.
 
-La base de datos aplica las mismas reglas con restricciones `CHECK` (migracion `20261119000000-add-workout-running-constraints`), por lo que un registro incoherente tampoco puede guardarse sin pasar por la API.
+Los `CHECK` de `workouts` (migracion `20261119000000-add-workout-running-constraints`) protegen la modalidad, las medidas y las referencias de planificacion. No verifican las series almacenadas en `workout_sets`: la prohibicion de series en running se controla en el servicio, mediante `validarReglasDeModalidad` de `workout.service.ts`. Por lo tanto, estas restricciones no sustituyen todas las reglas del servicio.
 
 ### `PUT /workouts/:id`
 
@@ -689,6 +738,8 @@ Respuesta `200` para `modalidad=running`:
 ```
 
 Los dias se agrupan por fecha UTC. `intensityLevel` va de 1 a 4 y compara el volumen diario (fuerza) o la distancia diaria (running) contra el maximo del rango.
+
+En fuerza, si existe volumen positivo en el rango, un dia con volumen cero recibe nivel `1`. Si el volumen maximo de todo el rango es cero, el nivel usa la cantidad de entrenamientos del dia, con tope `4`: `min(workoutCount, 4)`. Esto incluye entrenamientos sin series o con peso cero. Sin entrenamientos se devuelve `activity: []`.
 
 ### `GET /metrics/exercise-progress`
 

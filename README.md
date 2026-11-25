@@ -1,4 +1,24 @@
-# PowerUp — API de entrenamientos de fuerza y running
+# PowerUp — API de entrenamientos
+
+**Índice**
+
+- [Documentación](#documentación)
+- [Cómo levantar el proyecto](#cómo-levantar-el-proyecto)
+  - [Opción 1 — Todo con Docker (recomendada)](#opción-1--todo-con-docker-recomendada)
+  - [Opción 2 — Backend local y PostgreSQL con Docker](#opción-2--backend-local-y-postgresql-con-docker)
+  - [Opción 3 — Todo local, sin Docker](#opción-3--todo-local-sin-docker)
+- [Verificación y accesos](#verificación-y-accesos)
+- [Usar requests.http en VS Code](#usar-requestshttp-en-vs-code)
+- [Configuración reproducible](#configuración-reproducible)
+- [Comandos del backend](#comandos-del-backend)
+- [Pruebas](#pruebas)
+- [Organización](#organización)
+- [Problemas frecuentes](#problemas-frecuentes)
+  - [Puerto ocupado](#puerto-ocupado)
+  - [Backend `unhealthy` o error `EAI_AGAIN database`](#backend-unhealthy-o-error-eai_again-database)
+  - [Error `EACCES` en `backend/node_modules`](#error-eacces-en-backendnode_modules)
+  - [Borrar la base Docker y comenzar de nuevo](#borrar-la-base-docker-y-comenzar-de-nuevo)
+- [Integrantes](#integrantes)
 
 PowerUp es una API REST para registrar y analizar entrenamientos. Permite gestionar ejercicios, grupos musculares, rutinas y programas semanales, y registrar dos modalidades de entrenamiento:
 
@@ -21,7 +41,7 @@ Proyecto de Metodología de Sistemas II, desarrollado con Node.js 24, TypeScript
 
 ## Cómo levantar el proyecto
 
-Elegir **una sola** de las siguientes opciones. Cada opción comienza desde un clon nuevo y no depende de haber ejecutado las anteriores.
+La versión actualizada del Taller III está en la rama **`dev`**. Los comandos siguientes la seleccionan explícitamente al clonar. Elegir **una sola** opción; cada una comienza desde un clon nuevo y no depende de haber ejecutado las anteriores.
 
 ### Opción 1 — Todo con Docker (recomendada)
 
@@ -36,7 +56,7 @@ No requiere instalar Node.js ni PostgreSQL.
 Desde una terminal:
 
 ```bash
-git clone https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
+git clone --branch dev https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
 cd proyecto-metodologia-sistemas-II-grupo-15
 docker compose up -d --build
 docker compose exec backend npm run db:setup
@@ -63,7 +83,7 @@ Requisitos:
 Desde una terminal:
 
 ```bash
-git clone https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
+git clone --branch dev https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
 cd proyecto-metodologia-sistemas-II-grupo-15
 docker compose up -d database pgadmin
 cd backend
@@ -112,7 +132,7 @@ CREATE DATABASE app_database OWNER app_user;
 Después, desde una terminal:
 
 ```bash
-git clone https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
+git clone --branch dev https://github.com/vladimir-koz/proyecto-metodologia-sistemas-II-grupo-15.git
 cd proyecto-metodologia-sistemas-II-grupo-15/backend
 cp .env.example .env
 node --version
@@ -149,6 +169,18 @@ Credenciales locales:
 | PostgreSQL | `app_user` | `app_password` |
 
 En pgAdmin conectar al host `database`, puerto `5432` y base `app_database`. Estas credenciales son únicamente para desarrollo local.
+
+## Usar requests.http en VS Code
+
+Con la API en ejecución y `npm run db:setup` completado:
+
+1. Instalar la extensión **REST Client** en VS Code y abrir [requests.http](requests.http).
+2. Revisar `@host` al principio del archivo: por defecto usa `http://localhost:3001`.
+3. Pulsar **Send Request** sobre **Login demo** antes de ejecutar peticiones protegidas. REST Client reutiliza el JWT de esa respuesta.
+4. Seguir las secciones de creación en orden: las peticiones con `# @name` guardan las respuestas cuyos IDs utilizan las siguientes. Las escrituras afectan recursos del usuario demo. Si se repite el registro de usuario, cambiar su email.
+5. Para retirar los recursos creados, ejecutar las peticiones de limpieza en el orden indicado al final del archivo.
+
+Esta colección permite comprobar manualmente la API; no sustituye las pruebas automatizadas.
 
 ## Configuración reproducible
 
@@ -211,6 +243,8 @@ En la opción 1 (todo con Docker): `docker compose exec backend npm test`. El re
 Las suites de migraciones, integración funcional y E2E del backend usan un PostgreSQL 17 descartable, separado de la base de desarrollo. [docs/testing.md](docs/testing.md) explica cómo prepararlo, qué casos se eligieron y por qué, y qué queda sin probar.
 
 En GitHub, el workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) ejecuta las mismas pruebas en cada push y pull request hacia `dev` o `main`.
+
+Los resultados locales de la auditoría están registrados en [docs/testing.md](docs/testing.md#auditoría-definitiva-del-24112026). Permanecen [defectos y limitaciones conocidos de la API](docs/API.md#defectos-conocidos-en-campos-nullable) y [alertas de dependencias pendientes de evaluación](docs/testing.md#alertas-de-dependencias-pendientes). Las pruebas aprobadas no certifican que el proyecto esté preparado para producción.
 
 ## Organización
 
