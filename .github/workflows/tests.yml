@@ -48,6 +48,7 @@ jobs:
       WORKOUTS_TEST_DATABASE_URL: postgres://powerup_workouts_test:powerup_test@localhost:5432/powerup_workouts_integration_test
       METRICS_TEST_DATABASE_URL: postgres://powerup_metrics_test:powerup_test@localhost:5432/powerup_metrics_integration_test
       ROUTINES_TEST_DATABASE_URL: postgres://powerup_routines_test:powerup_test@localhost:5432/powerup_routines_integration_test
+      PLANNING_TEST_DATABASE_URL: postgres://powerup_planning_test:powerup_test@localhost:5432/powerup_planning_integration_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,3 +66,4 @@ jobs:
       - run: npm run test:workouts
       - run: npm run test:metrics
       - run: npm run test:routines
+      - run: npm run test:planning
