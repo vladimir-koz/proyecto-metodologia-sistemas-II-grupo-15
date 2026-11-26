@@ -29,6 +29,8 @@
 
 Este documento explica qué pruebas tiene el backend de PowerUp, qué comportamiento verifica cada grupo, cómo ejecutarlas, cómo leer sus resultados y qué queda sin probar.
 
+Las pruebas manuales con Postman contra la API en ejecución, incluido el caso CP-01 basado en el E2E, están en [postman.md](postman.md). No forman parte de las 72 pruebas automatizadas.
+
 Herramientas: **Jest** (ejecución y aserciones), **Supertest** (peticiones HTTP contra la aplicación Express real) y **PostgreSQL 17** real para integración y E2E del backend. Supertest utiliza un servidor HTTP efímero dentro del proceso de pruebas; no arranca el servidor de despliegue. No se agregaron otras dependencias.
 
 ## 1. Resumen de las suites
