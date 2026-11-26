@@ -9,6 +9,7 @@
   - [Opción 3 — Todo local, sin Docker](#opción-3--todo-local-sin-docker)
 - [Verificación y accesos](#verificación-y-accesos)
 - [Usar requests.http en VS Code](#usar-requestshttp-en-vs-code)
+- [Usar la colección de Postman](#usar-la-colección-de-postman)
 - [Configuración reproducible](#configuración-reproducible)
 - [Comandos del backend](#comandos-del-backend)
 - [Pruebas](#pruebas)
@@ -36,6 +37,7 @@ Proyecto de Metodología de Sistemas II, desarrollado con Node.js 24, TypeScript
 | Este README | Instalación, configuración, ejecución y comandos. |
 | [docs/API.md](docs/API.md) | Contrato de todos los endpoints: campos, validaciones, respuestas y errores. |
 | [requests.http](requests.http) | Colección de peticiones de ejemplo para la extensión REST Client de VS Code. |
+| [docs/postman.md](docs/postman.md) | Colección de Postman con tests para los 49 endpoints y el caso de prueba CP-01 (ciclo completo del usuario, basado en el camino crítico del E2E). |
 | [docs/testing.md](docs/testing.md) | Pruebas automatizadas: qué verifican, cómo ejecutarlas, cómo interpretar los resultados y sus limitaciones. |
 | [docs/decisiones-diseno.md](docs/decisiones-diseno.md) | Decisiones de diseño y refactoring de los Talleres II y III, incluido el uso de Strategy. |
 
@@ -182,6 +184,16 @@ Con la API en ejecución y `npm run db:setup` completado:
 
 Esta colección permite comprobar manualmente la API; no sustituye las pruebas automatizadas.
 
+## Usar la colección de Postman
+
+Con la API en ejecución y `npm run db:setup` completado:
+
+1. En Postman, **Import** → [`postman/PowerUp.postman_collection.json`](postman/PowerUp.postman_collection.json). La variable `baseUrl` de la colección apunta a `http://localhost:3001`.
+2. Para el flujo principal, ejecutar la carpeta **`01 - CP-01 Ciclo completo (camino crítico)`** con **Run folder**, o enviar sus 21 peticiones en orden. Crea su propio usuario y no necesita datos previos. Resultado esperado: 42 tests aprobados.
+3. Para recorrer todos los endpoints, ejecutar la colección completa con **Run collection** (82 peticiones y 146 tests). La última carpeta elimina los recursos creados con la cuenta demo.
+
+[docs/postman.md](docs/postman.md) documenta el caso de prueba CP-01 paso a paso, con sus datos, resultados esperados y criterio de aprobación.
+
 ## Configuración reproducible
 
 - Node.js debe ser versión 24. `node --version` debe comenzar con `v24`.
@@ -258,6 +270,7 @@ El flujo principal es `routes → validators/middlewares → controllers → ser
 | `backend/tests/unit`, `backend/tests/http` | Pruebas que no necesitan base de datos (`npm test`). |
 | `backend/integration`, `backend/functional-integration`, `backend/e2e` | Migraciones, integración funcional y E2E del backend con PostgreSQL real; incluye el script que prepara sus bases. |
 | `docs/` | Documentación técnica (ver [Documentación](#documentación)). |
+| `postman/` | Colección de Postman para pruebas manuales de la API (ver [docs/postman.md](docs/postman.md)). |
 
 ## Problemas frecuentes
 

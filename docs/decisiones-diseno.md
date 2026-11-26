@@ -168,6 +168,8 @@ Separamos las **correcciones de comportamiento** de los **refactorings**, porque
 | `04aa100` | Correccion | La migracion de running podia quedar a medias si fallaba una columna. Ahora es transaccional. | Pruebas de migracion que fuerzan fallos en `up` y `down`. |
 | `84e3b3f` | Correccion | La coherencia entre modalidad y campos dependia solo de la API. Se agregaron restricciones `CHECK` en PostgreSQL. | 14 casos de insercion rechazados con codigo `23514`. |
 | `422cb72` | Correccion | `duracionSegundos` aceptaba valores mayores al maximo de `INTEGER`. Ahora se valida el rango `1..2147483647`. | `tests/http/workout.duration.test.js`. |
+| `7d2bf69` | Correccion | Actualizar a `null` un campo de texto opcional de una plantilla (`descripcion`, `tipo`, `grupoMuscularEtiqueta`, `dificultad`) producia `500` por llamar a `.trim()` sobre `null`. Ahora se guarda como `NULL`. | Prueba de campos nullable en `functional-integration/routines.test.js`. |
+| `2b7218b` | Correccion | `GET /program-weeks` y `GET /scheduled-workouts` respondian `400` ante IDs validos: el controlador esperaba un string, pero el validador ya lo habia convertido a numero. | La suite de planificacion reprodujo el fallo (2/3) y paso 3/3 sin cambiar sus aserciones. |
 | `3dd25e1` | Refactoring (pruebas) | La configuracion de PostgreSQL estaba repetida en las pruebas de integracion. Se extrajo a `functional-integration/database.js`. | Las suites de integracion siguen pasando. |
 
 Otras herramientas de calidad que usamos: TypeScript con `strict: true` (el build falla ante errores de tipos), validacion de entrada con express-validator, y un workflow de GitHub Actions que compila y ejecuta las pruebas en cada push y pull request (ver [testing.md](testing.md)).
